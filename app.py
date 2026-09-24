@@ -32,7 +32,7 @@ def init_db():
 
 init_db()
 
-# --- 2. قوالب HTML تصميم عصري ومرتب ---
+# --- 2. قوالب HTML تصميم عصري مع كود إثبات ملكية AdSense ---
 
 AUTH_HTML = """
 <!DOCTYPE html>
@@ -41,6 +41,9 @@ AUTH_HTML = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مدير الحسابات - تسجيل الدخول</title>
+    <!-- كود إثبات ملكية Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6038377293496140"
+     crossorigin="anonymous"></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: #f3f4f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; color: #1f2937; }
@@ -84,6 +87,9 @@ DASHBOARD_HTML = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة التحكم</title>
+    <!-- كود إثبات ملكية Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6038377293496140"
+     crossorigin="anonymous"></script>
     <style>
         * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: #f8fafc; margin: 0; padding: 24px; color: #334155; }
@@ -99,7 +105,7 @@ DASHBOARD_HTML = """
         .card { background: #ffffff; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 20px; }
         .card-title { margin: 0 0 16px 0; font-size: 15px; font-weight: 600; color: #475569; }
 
-        /* Form Row (مصفوفة بجانب بعض) */
+        /* Form Row */
         .form-row { display: flex; gap: 10px; align-items: center; }
         .form-row select { padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; background: #ffffff; color: #334155; outline: none; }
         .form-row input { flex: 1; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 14px; outline: none; background: #ffffff; }
@@ -146,7 +152,7 @@ DASHBOARD_HTML = """
                     <tr>
                         <th style="width: 60px;">#</th>
                         <th style="width: 120px;">النوع</th>
-                        <th>البيانات المحفوظة</th>
+                        <th style="width: auto;">البيانات المحفوظة</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -236,7 +242,7 @@ def add_account():
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
     cursor.execute("INSERT INTO user_accounts (user_id, category, account_data) VALUES (?, ?, ?)", 
-                   (session["user_id"], category, account_data))
+                    (session["user_id"], category, account_data))
     conn.commit()
     conn.close()
     
