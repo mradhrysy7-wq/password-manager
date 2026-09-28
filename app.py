@@ -82,7 +82,6 @@ def check_session_timeout():
         now = time.time()
         last_active = session.get("last_active", now)
         if now - last_active > 900:
-            # تسجيل وقت الخروج التلقائي عند انتهاء الجلسة
             logout_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             try:
                 conn = get_db_connection()
@@ -605,7 +604,6 @@ def login():
         session["user_id"] = user[0]
         session["last_active"] = time.time()
         
-        # تسجيل وقت الدخول بدقة
         login_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute("UPDATE users SET last_login = ? WHERE id = ?", (login_time, user[0]))
         conn.commit()
@@ -618,7 +616,6 @@ def login():
 @app.route("/logout")
 def logout():
     if "user_id" in session:
-        # تسجيل وقت الخروج بدقة عند الضغط على تسجيل الخروج
         logout_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         try:
             conn = get_db_connection()
