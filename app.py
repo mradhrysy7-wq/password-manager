@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import time
+from datetime import datetime
 from flask import Flask, request, render_template_string, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from cryptography.fernet import Fernet
@@ -33,7 +34,7 @@ def decrypt_password(encrypted_password):
     except Exception:
         return "[خطأ في فك التشفير]"
 
-# --- مسار دائم لقاعدة البيانات لمنع الحذف وقت التحديثات (Persistent Storage) ---
+# --- مسار دائم لقاعدة البيانات ---
 DB_PATH = os.path.join(os.getcwd(), "database_app_details.db")
 
 def get_db_connection():
@@ -41,7 +42,7 @@ def get_db_connection():
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
-# --- تهيئة قاعدة البيانات ---
+# --- تهيئة قاعدة البيانات مع إضافة حقول أوقات الدخول والخروج ---
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -50,7 +51,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL
+            password_hash TEXT NOT NULL,
+            last_login TEXT,
+            last_logout TEXT
         )
     ''')
     
@@ -72,14 +75,23 @@ def init_db():
 
 init_db()
 
-# --- فحص انتهاء الجلسة تلقائياً (Session Timeout Middleware) ---
+# --- فحص انتهاء الجلسة تلقائياً ---
 @app.before_request
 def check_session_timeout():
     if "user_id" in session:
         now = time.time()
         last_active = session.get("last_active", now)
-        # انتهاء الجلسة بعد 15 دقيقة من عدم النشاط (900 ثانية)
         if now - last_active > 900:
+            # تسجيل وقت الخروج التلقائي عند انتهاء الجلسة
+            logout_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("UPDATE users SET last_logout = ? WHERE id = ?", (logout_time, session["user_id"]))
+                conn.commit()
+                conn.close()
+            except:
+                pass
             session.clear()
             return redirect("/")
         session["last_active"] = now
@@ -159,7 +171,6 @@ HOME_HTML = """
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>الرئيسية - أقسام الحسابات</title>
-    <!-- كود إعلانات جوجل AdSense المهيأ للربح -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
     <style>
         :root {
@@ -178,6 +189,7 @@ HOME_HTML = """
         .header-actions { display: flex; gap: 12px; align-items: center; }
         #themeToggle { background: none; border: 1px solid var(--border-color); color: var(--text-color); padding: 6px 10px; border-radius: 6px; cursor: pointer; }
         .logout { color: var(--logout-text); text-decoration: none; font-size: 14px; font-weight: 500; padding: 6px 12px; border-radius: 6px; background: var(--logout-bg); }
+        .admin-link { color: #60a5fa; text-decoration: none; font-size: 14px; font-weight: 500; padding: 6px 12px; border-radius: 6px; background: #1e3a8a; }
         .grid-sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
         .section-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; text-align: center; text-decoration: none; color: var(--text-heading); transition: transform 0.2s, border-color 0.2s; }
         .section-card:hover { transform: translateY(-3px); border-color: #2563eb; }
@@ -190,6 +202,9 @@ HOME_HTML = """
         <div class="header">
             <h2>مرحباً، مراد 👋 - اختر القسم المطلوب</h2>
             <div class="header-actions">
+                {% if is_admin %}
+                <a href="/admin/users" class="admin-link">لوحة المشرف ⚙️</a>
+                {% endif %}
                 <button id="themeToggle" title="تبديل الثيم">🌙 / ☀️</button>
                 <a href="/logout" class="logout">تسجيل الخروج</a>
             </div>
@@ -463,7 +478,13 @@ EDIT_HTML = """
 @app.route("/")
 def index():
     if "user_id" in session:
-        return render_template_string(HOME_HTML)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT username FROM users WHERE id = ?", (session["user_id"],))
+        user_row = cursor.fetchone()
+        conn.close()
+        is_admin = user_row and user_row[0] == "morid"
+        return render_template_string(HOME_HTML, is_admin=is_admin)
     return render_template_string(AUTH_HTML)
 
 @app.route("/category/<cat_slug>")
@@ -579,18 +600,99 @@ def login():
     cursor = conn.cursor()
     cursor.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,))
     user = cursor.fetchone()
-    conn.close()
+    
     if user and check_password_hash(user[1], password):
         session["user_id"] = user[0]
         session["last_active"] = time.time()
+        
+        # تسجيل وقت الدخول بدقة
+        login_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute("UPDATE users SET last_login = ? WHERE id = ?", (login_time, user[0]))
+        conn.commit()
+        conn.close()
         return redirect("/")
     else:
+        conn.close()
         return "<script>alert('اسم المستخدم أو كلمة السر غير صحيحة!'); window.location.href='/';</script>"
 
 @app.route("/logout")
 def logout():
+    if "user_id" in session:
+        # تسجيل وقت الخروج بدقة عند الضغط على تسجيل الخروج
+        logout_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("UPDATE users SET last_logout = ? WHERE id = ?", (logout_time, session["user_id"]))
+            conn.commit()
+            conn.close()
+        except:
+            pass
     session.clear()
     return redirect("/")
+
+# --- لوحة تحكم المشرف (تظهر وقت الدخول والخروج وعدد المستخدمين والحسابات) ---
+@app.route("/admin/users")
+def admin_users():
+    if "user_id" not in session:
+        return redirect("/")
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT username FROM users WHERE id = ?", (session["user_id"],))
+    current_user = cursor.fetchone()
+    
+    if not current_user or current_user[0] != "morid":  
+        conn.close()
+        return "غير مسموح لك بالوصول لهذه الصفحة.", 403
+
+    cursor.execute("""
+        SELECT u.id, u.username, u.last_login, u.last_logout, COUNT(a.id) as accounts_count
+        FROM users u
+        LEFT JOIN app_accounts a ON u.id = a.user_id
+        GROUP BY u.id, u.username, u.last_login, u.last_logout
+    """)
+    users = cursor.fetchall()
+    conn.close()
+    
+    html_output = """
+    <html lang="ar" dir="rtl">
+    <head>
+        <meta charset="UTF-8">
+        <title>لوحة تحكم المشرف - المستخدمين</title>
+        <style>
+            body { font-family: Tahoma, sans-serif; background: #121212; color: #fff; padding: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1e1e1e; }
+            th, td { padding: 12px; border: 1px solid #333; text-align: center; }
+            th { background: #2563eb; }
+            a { color: #60a5fa; text-decoration: none; }
+        </style>
+    </head>
+    <body>
+        <h2>لوحة تحكم المشرف - متابعة نشاط المستخدمين</h2>
+        <a href="/">← العودة للرئيسية</a>
+        <table>
+            <tr>
+                <th>المعرف (ID)</th>
+                <th>اسم المستخدم</th>
+                <th>وقت آخر دخول</th>
+                <th>وقت آخر خروج</th>
+                <th>عدد الحسابات المحفوظة</th>
+            </tr>
+    """
+    
+    for u in users:
+        login_t = u[2] if u[2] else "لم يسجل دخول بعد"
+        logout_t = u[3] if u[3] else "لم يخرج / جلسة نشطة"
+        html_output += f"<tr><td>{u[0]}</td><td>{u[1]}</td><td>{login_t}</td><td>{logout_t}</td><td>{u[4]}</td></tr>"
+        
+    html_output += """
+        </table>
+    </body>
+    </html>
+    """
+    return html_output
 
 if __name__ == "__main__":
     app.run(debug=True)
