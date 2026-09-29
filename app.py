@@ -178,7 +178,7 @@ HOME_HTML = """
 <body>
     <div class="main-wrapper">
         <div class="header">
-            <h2>مرحباً، مراد 👋 - اختر القسم المطلوب</h2>
+            <h2>مرحباً، {{ username }} 👋 - اختر القسم المطلوب</h2>
             <div class="header-actions">
                 <button id="themeToggle" title="تبديل الثيم">🌙 / ☀️</button>
                 <a href="/logout" class="logout">تسجيل الخروج</a>
@@ -452,7 +452,13 @@ EDIT_HTML = """
 @app.route("/")
 def index():
     if "user_id" in session:
-        return render_template_string(HOME_HTML)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT username FROM users WHERE id = ?", (session["user_id"],))
+        user_row = cursor.fetchone()
+        conn.close()
+        username = user_row[0] if user_row else "مستخدم"
+        return render_template_string(HOME_HTML, username=username)
     return render_template_string(AUTH_HTML)
 
 @app.route("/category/<cat_slug>")
