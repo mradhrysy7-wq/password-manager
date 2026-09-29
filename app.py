@@ -9,7 +9,6 @@ from cryptography.fernet import Fernet
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "morad_super_secure_adsense_key_2026")
 
-# --- إعداد مفتاح التشفير (Fernet) لحماية كلمات المرور ---
 KEY_FILE = "secret.key"
 if os.path.exists(KEY_FILE):
     with open(KEY_FILE, "rb") as key_file:
@@ -34,7 +33,6 @@ def decrypt_password(encrypted_password):
     except Exception:
         return "[خطأ في فك التشفير]"
 
-# --- مسار دائم لقاعدة البيانات ---
 DB_PATH = os.path.join(os.getcwd(), "database_app_details.db")
 
 def get_db_connection():
@@ -42,11 +40,9 @@ def get_db_connection():
     conn.execute("PRAGMA foreign_keys = ON;")
     return conn
 
-# --- تهيئة قاعدة البيانات مع إضافة حقول أوقات الدخول والخروج ---
 def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
-    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,7 +52,6 @@ def init_db():
             last_logout TEXT
         )
     ''')
-    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS app_accounts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,13 +64,11 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
     ''')
-    
     conn.commit()
     conn.close()
 
 init_db()
 
-# --- فحص انتهاء الجلسة تلقائياً ---
 @app.before_request
 def check_session_timeout():
     if "user_id" in session:
@@ -95,7 +88,6 @@ def check_session_timeout():
             return redirect("/")
         session["last_active"] = now
 
-# --- قوالب HTML ---
 AUTH_HTML = """
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -473,7 +465,6 @@ EDIT_HTML = """
 </html>
 """
 
-# --- مسارات التطبيق (Routes) ---
 @app.route("/")
 def index():
     if "user_id" in session:
@@ -628,7 +619,6 @@ def logout():
     session.clear()
     return redirect("/")
 
-# --- لوحة تحكم المشرف (تظهر وقت الدخول والخروج وعدد المستخدمين والحسابات) ---
 @app.route("/admin/users")
 def admin_users():
     if "user_id" not in session:
