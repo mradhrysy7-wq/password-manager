@@ -993,31 +993,71 @@ def admin_users():
 
 
 def send_email_code(to_email, code, purpose):
-  """Send a one-time code using SMTP environment settings."""
-  smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com').strip()
-  smtp_port = int(os.environ.get('SMTP_PORT', '465'))
-  smtp_user = os.environ.get('SMTP_USER', '').strip()
-  smtp_password = os.environ.get('SMTP_PASSWORD', '')
-  smtp_from = os.environ.get('SMTP_FROM', smtp_user).strip()
-  if not all([smtp_host, smtp_user, smtp_password, smtp_from]):
+  """Send a one-time verification code using the Resend API."""
+  import json
+  import urllib.error
+  import urllib.request
+
+  api_key = os.environ.get('RESEND_API_KEY', '').strip()
+  from_email = os.environ.get(
+      'RESEND_FROM', 'onboarding@resend.dev'
+  ).strip()
+
+  if not api_key:
     raise RuntimeError(
-        'إعدادات البريد غير مكتملة: SMTP_HOST وSMTP_PORT وSMTP_USER'
-        ' وSMTP_PASSWORD وSMTP_FROM'
+        'متغير RESEND_API_KEY غير موجود في إعدادات Render'
     )
-  msg = EmailMessage()
-  msg['Subject'] = 'رمز التحقق - مدير الحسابات'
-  msg['From'] = smtp_from
-  msg['To'] = to_email
-  msg.set_content(
+  if not from_email:
+    raise RuntimeError(
+        'متغير RESEND_FROM غير موجود في إعدادات Render'
+    )
+
+  subjects = {
+      'register': 'تأكيد إنشاء حسابك',
+      'login': 'رمز تأكيد تسجيل الدخول',
+      'reset': 'إعادة تعيين كلمة المرور',
+  }
+  subject = subjects.get(purpose, 'رمز التحقق - مدير الحسابات')
+
+  message = (
       f'مرحبًا،\n\nرمز التحقق الخاص بك هو: {code}\n'
       'صلاحية الرمز 10 دقائق. لا تشارك الرمز مع أي شخص.\n\n'
       'إذا لم تطلب هذا الرمز، فتجاهل الرسالة.'
   )
-  # التعديل الرئيسي: استخدام SMTP_SSL بدلاً من SMTP مع starttls لدعم المنفذ 465
-  with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=20) as server:
-    server.login(smtp_user, smtp_password)
-    server.send_message(msg)
 
+  data = {
+      'from': from_email,
+      'to': [to_email],
+      'subject': subject,
+      'text': message,
+  }
+
+  req = urllib.request.Request(
+      'https://api.resend.com/emails',
+      data=json.dumps(data).encode('utf-8'),
+      headers={
+          'Authorization': f'Bearer {api_key}',
+          'Content-Type': 'application/json',
+      },
+      method='POST',
+  )
+
+  try:
+    with urllib.request.urlopen(req, timeout=20) as response:
+      if response.status not in (200, 201):
+        raise RuntimeError('لم ينجح إرسال البريد عبر Resend')
+      return True
+  except urllib.error.HTTPError as error:
+    details = error.read().decode('utf-8', errors='replace')
+    app.logger.error(
+        'Resend email error: HTTP %s - %s', error.code, details
+    )
+    raise RuntimeError(
+        f'فشل إرسال البريد عبر Resend (HTTP {error.code})'
+    ) from error
+  except urllib.error.URLError as error:
+    app.logger.error('Resend connection error: %s', error)
+    raise RuntimeError('تعذر الاتصال بخدمة إرسال البريد Resend') from error
 
 def create_email_code(email, purpose, payload=None):
   code = f'{secrets.randbelow(1000000):06d}'
@@ -1061,7 +1101,7 @@ def verify_email_code(email, purpose, code):
           (email, purpose),
       )
       conn.commit()
-      return row[2]
+      return True
     return False
   finally:
     conn.close()
