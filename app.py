@@ -1,66 +1,87 @@
-import sqlite3
-import os
-import time
-import smtplib
-import secrets
 import hashlib
+import os
+import secrets
+import smtplib
+import sqlite3
+import time
 from datetime import datetime
 from email.message import EmailMessage
-from flask import Flask, request, render_template_string, redirect, url_for, session, flash
-from werkzeug.security import generate_password_hash, check_password_hash
+
 from cryptography.fernet import Fernet
+from flask import (
+    Flask,
+    flash,
+    redirect,
+    render_template_string,
+    request,
+    session,
+    url_for,
+)
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "morad_super_secure_adsense_key_2026")
+app.secret_key = os.environ.get(
+    'SECRET_KEY', 'morad_super_secure_adsense_key_2026'
+)
 
-KEY_FILE = "secret.key"
+KEY_FILE = 'secret.key'
 if os.path.exists(KEY_FILE):
-    with open(KEY_FILE, "rb") as key_file:
-        ENCRYPTION_KEY = key_file.read()
+  with open(KEY_FILE, 'rb') as key_file:
+    ENCRYPTION_KEY = key_file.read()
 else:
-    ENCRYPTION_KEY = Fernet.generate_key()
-    with open(KEY_FILE, "wb") as key_file:
-        key_file.write(ENCRYPTION_KEY)
+  ENCRYPTION_KEY = Fernet.generate_key()
+  with open(KEY_FILE, 'wb') as key_file:
+    key_file.write(ENCRYPTION_KEY)
 
 cipher_suite = Fernet(ENCRYPTION_KEY)
 
+
 def encrypt_password(plain_password):
-    if not plain_password:
-        return ""
-    return cipher_suite.encrypt(plain_password.encode()).decode()
+  if not plain_password:
+    return ''
+  return cipher_suite.encrypt(plain_password.encode()).decode()
+
 
 def decrypt_password(encrypted_password):
-    if not encrypted_password:
-        return ""
-    try:
-        return cipher_suite.decrypt(encrypted_password.encode()).decode()
-    except Exception:
-        return "[خطأ في فك التشفير]"
+  if not encrypted_password:
+    return ''
+  try:
+    return cipher_suite.decrypt(encrypted_password.encode()).decode()
+  except Exception:
+    return '[خطأ في فك التشفير]'
 
-DB_PATH = os.path.join(os.getcwd(), "database_app_details.db")
+
+DB_PATH = os.path.join(os.getcwd(), 'database_app_details.db')
+
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = ON;")
-    return conn
+  conn = sqlite3.connect(DB_PATH)
+  conn.execute('PRAGMA foreign_keys = ON;')
+  return conn
+
 
 def init_db():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('''
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             email TEXT
         )
-    ''')
-    # ترقية قواعد البيانات القديمة دون حذف الحسابات أو كلمات المرور المحفوظة.
-    user_columns = {row[1] for row in cursor.execute("PRAGMA table_info(users)").fetchall()}
-    if "email" not in user_columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN email TEXT")
-    cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email COLLATE NOCASE) WHERE email IS NOT NULL AND email != ''")
-    cursor.execute('''
+    """)
+  # ترقية قواعد البيانات القديمة دون حذف الحسابات أو كلمات المرور المحفوظة.
+  user_columns = {
+      row[1] for row in cursor.execute('PRAGMA table_info(users)').fetchall()
+  }
+  if 'email' not in user_columns:
+    cursor.execute('ALTER TABLE users ADD COLUMN email TEXT')
+  cursor.execute(
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON'
+      ' users(email COLLATE NOCASE) WHERE email IS NOT NULL AND email != ""'
+  )
+  cursor.execute("""
         CREATE TABLE IF NOT EXISTS app_accounts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -71,8 +92,8 @@ def init_db():
             password TEXT,          
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )
-    ''')
-    cursor.execute('''
+    """)
+  cursor.execute("""
         CREATE TABLE IF NOT EXISTS auth_codes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT NOT NULL,
@@ -82,21 +103,24 @@ def init_db():
             expires_at REAL NOT NULL,
             attempts INTEGER NOT NULL DEFAULT 0
         )
-    ''')
-    conn.commit()
-    conn.close()
+    """)
+  conn.commit()
+  conn.close()
+
 
 init_db()
 
+
 @app.before_request
 def check_session_timeout():
-    if "user_id" in session:
-        now = time.time()
-        last_active = session.get("last_active", now)
-        if now - last_active > 900:
-            session.clear()
-            return redirect("/")
-        session["last_active"] = now
+  if 'user_id' in session:
+    now = time.time()
+    last_active = session.get('last_active', now)
+    if now - last_active > 900:
+      session.clear()
+      return redirect('/')
+    session['last_active'] = now
+
 
 # 1. صفحة المصادقة والترحيب بالزوار (Landing & Auth - الواجهة الحديثة)
 AUTH_HTML = """
@@ -472,7 +496,7 @@ CATEGORY_HTML = """
                     });
             } else {
                 span.textContent = '••••••••';
-                btn.textContent = 'إظهار';
+                btn.textContent = 'إخفاء';
             }
         }
     </script>
@@ -713,233 +737,334 @@ ADMIN_HTML = """
 </html>
 """
 
-@app.route("/")
+
+@app.route('/')
 def index():
-    if "user_id" in session:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT username FROM users WHERE id = ?", (session["user_id"],))
-        user_row = cursor.fetchone()
-        conn.close()
-        username = user_row[0] if user_row else "مستخدم"
-        return render_template_string(HOME_HTML, username=username)
-    return render_template_string(AUTH_HTML)
+  if 'user_id' in session:
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        'SELECT username FROM users WHERE id = ?', (session['user_id'],)
+    )
+    user_row = cursor.fetchone()
+    conn.close()
+    username = user_row[0] if user_row else 'مستخدم'
+    return render_template_string(HOME_HTML, username=username)
+  return render_template_string(AUTH_HTML)
 
-@app.route("/category/<cat_slug>")
+
+@app.route('/category/<cat_slug>')
 def category_view(cat_slug):
-    if "user_id" not in session: return redirect("/")
-    cat_names = {"تطبيق": "التطبيقات والمنصات", "بريد": "البريد الإلكتروني", "موقع": "المواقع الإلكترونية"}
-    cat_name = cat_names.get(cat_slug, "الحسابات")
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, app_name, email, app_username, password FROM app_accounts WHERE user_id = ? AND account_type = ?", (session["user_id"], cat_slug))
-    accounts = cursor.fetchall()
-    conn.close()
-    return render_template_string(CATEGORY_HTML, cat_name=cat_name, cat_slug=cat_slug, accounts=accounts)
+  if 'user_id' not in session:
+    return redirect('/')
+  cat_names = {
+      'تطبيق': 'التطبيقات والمنصات',
+      'بريد': 'البريد الإلكتروني',
+      'موقع': 'المواقع الإلكترونية',
+  }
+  cat_name = cat_names.get(cat_slug, 'الحسابات')
 
-@app.route("/get_password/<int:item_id>")
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  cursor.execute(
+      'SELECT id, app_name, email, app_username, password FROM app_accounts'
+      ' WHERE user_id = ? AND account_type = ?',
+      (session['user_id'], cat_slug),
+  )
+  accounts = cursor.fetchall()
+  conn.close()
+  return render_template_string(
+      CATEGORY_HTML, cat_name=cat_name, cat_slug=cat_slug, accounts=accounts
+  )
+
+
+@app.route('/get_password/<int:item_id>')
 def get_password(item_id):
-    if "user_id" not in session: return {"password": "Unauthorized"}, 403
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT password FROM app_accounts WHERE id = ? AND user_id = ?", (item_id, session["user_id"]))
-    row = cursor.fetchone()
-    conn.close()
-    if row:
-        decrypted = decrypt_password(row[0])
-        return {"password": decrypted}
-    return {"password": "Not Found"}, 404
+  if 'user_id' not in session:
+    return {'password': 'Unauthorized'}, 403
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  cursor.execute(
+      'SELECT password FROM app_accounts WHERE id = ? AND user_id = ?',
+      (item_id, session['user_id']),
+  )
+  row = cursor.fetchone()
+  conn.close()
+  if row:
+    decrypted = decrypt_password(row[0])
+    return {'password': decrypted}
+  return {'password': 'Not Found'}, 404
 
-@app.route("/add_item", methods=["POST"])
+
+@app.route('/add_item', methods=['POST'])
 def add_item():
-    current_user_id = session.get("user_id")
-    if not current_user_id:
-        return redirect("/")
-        
-    account_type = request.form.get("account_type")
-    if account_type == "بريد":
-        app_name, email, app_username = None, request.form.get("email"), None
-    else:
-        app_name, email, app_username = request.form.get("app_name"), request.form.get("email"), request.form.get("app_username")
-    
-    raw_password = request.form.get("password")
-    encrypted_pwd = encrypt_password(raw_password)
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("PRAGMA foreign_keys = ON;")
-    cursor.execute("INSERT INTO app_accounts (user_id, account_type, app_name, app_username, email, password) VALUES (?, ?, ?, ?, ?, ?)", 
-                   (current_user_id, account_type, app_name, app_username, email, encrypted_pwd))
-    conn.commit()
-    conn.close()
-    return redirect(f"/category/{account_type}")
+  current_user_id = session.get('user_id')
+  if not current_user_id:
+    return redirect('/')
 
-@app.route("/edit/<int:item_id>", methods=["GET", "POST"])
+  account_type = request.form.get('account_type')
+  if account_type == 'بريد':
+    app_name, email, app_username = None, request.form.get('email'), None
+  else:
+    app_name, email, app_username = (
+        request.form.get('app_name'),
+        request.form.get('email'),
+        request.form.get('app_username'),
+    )
+
+  raw_password = request.form.get('password')
+  encrypted_pwd = encrypt_password(raw_password)
+
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  cursor.execute('PRAGMA foreign_keys = ON;')
+  cursor.execute(
+      'INSERT INTO app_accounts (user_id, account_type, app_name,'
+      ' app_username, email, password) VALUES (?, ?, ?, ?, ?, ?)',
+      (
+          current_user_id,
+          account_type,
+          app_name,
+          app_username,
+          email,
+          encrypted_pwd,
+      ),
+  )
+  conn.commit()
+  conn.close()
+  return redirect(f'/category/{account_type}')
+
+
+@app.route('/edit/<int:item_id>', methods=['GET', 'POST'])
 def edit_item(item_id):
-    if "user_id" not in session: return redirect("/")
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    if request.method == "POST":
-        raw_password = request.form.get("password")
-        encrypted_pwd = encrypt_password(raw_password)
-        email, app_name, app_username = request.form.get("email"), request.form.get("app_name"), request.form.get("app_username")
-        
-        cursor.execute("UPDATE app_accounts SET app_name = ?, app_username = ?, email = ?, password = ? WHERE id = ? AND user_id = ?",
-                       (app_name, app_username, email, encrypted_pwd, item_id, session["user_id"]))
-        conn.commit()
-        cursor.execute("SELECT account_type FROM app_accounts WHERE id = ?", (item_id,))
-        acc_type = cursor.fetchone()[0]
-        conn.close()
-        return redirect(f"/category/{acc_type}")
-        
-    cursor.execute("SELECT * FROM app_accounts WHERE id = ? AND user_id = ?", (item_id, session["user_id"]))
-    account = cursor.fetchone()
-    conn.close()
-    if not account: return "العنصر غير موجود أو لا تملك صلاحية الوصول إليه."
-    return render_template_string(EDIT_HTML, account=account)
+  if 'user_id' not in session:
+    return redirect('/')
+  conn = get_db_connection()
+  cursor = conn.cursor()
 
-@app.route("/delete/<int:item_id>")
+  if request.method == 'POST':
+    raw_password = request.form.get('password')
+    encrypted_pwd = encrypt_password(raw_password)
+    email, app_name, app_username = (
+        request.form.get('email'),
+        request.form.get('app_name'),
+        request.form.get('app_username'),
+    )
+
+    cursor.execute(
+        'UPDATE app_accounts SET app_name = ?, app_username = ?, email = ?,'
+        ' password = ? WHERE id = ? AND user_id = ?',
+        (
+            app_name,
+            app_username,
+            email,
+            encrypted_pwd,
+            item_id,
+            session['user_id'],
+        ),
+    )
+    conn.commit()
+    cursor.execute(
+        'SELECT account_type FROM app_accounts WHERE id = ?', (item_id,)
+    )
+    acc_type = cursor.fetchone()[0]
+    conn.close()
+    return redirect(f'/category/{acc_type}')
+
+  cursor.execute(
+      'SELECT * FROM app_accounts WHERE id = ? AND user_id = ?',
+      (item_id, session['user_id']),
+  )
+  account = cursor.fetchone()
+  conn.close()
+  if not account:
+    return 'العنصر غير موجود أو لا تملك صلاحية الوصول إليه.'
+  return render_template_string(EDIT_HTML, account=account)
+
+
+@app.route('/delete/<int:item_id>')
 def delete_item(item_id):
-    if "user_id" not in session: return redirect("/")
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT account_type FROM app_accounts WHERE id = ? AND user_id = ?", (item_id, session["user_id"]))
-    row = cursor.fetchone()
-    if row:
-        acc_type = row[0]
-        cursor.execute("DELETE FROM app_accounts WHERE id = ? AND user_id = ?", (item_id, session["user_id"]))
-        conn.commit()
-        conn.close()
-        return redirect(f"/category/{acc_type}")
+  if 'user_id' not in session:
+    return redirect('/')
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  cursor.execute(
+      'SELECT account_type FROM app_accounts WHERE id = ? AND user_id = ?',
+      (item_id, session['user_id']),
+  )
+  row = cursor.fetchone()
+  if row:
+    acc_type = row[0]
+    cursor.execute(
+        'DELETE FROM app_accounts WHERE id = ? AND user_id = ?',
+        (item_id, session['user_id']),
+    )
+    conn.commit()
     conn.close()
-    return redirect("/")
+    return redirect(f'/category/{acc_type}')
+  conn.close()
+  return redirect('/')
 
-@app.route("/settings", methods=["GET"])
+
+@app.route('/settings', methods=['GET'])
 def settings_page():
-    if "user_id" not in session: return redirect("/")
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT username FROM users WHERE id = ?", (session["user_id"],))
-    user_row = cursor.fetchone()
-    conn.close()
-    username = user_row[0] if user_row else ""
-    return render_template_string(SETTINGS_HTML, username=username)
+  if 'user_id' not in session:
+    return redirect('/')
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  cursor.execute(
+      'SELECT username FROM users WHERE id = ?', (session['user_id'],)
+  )
+  user_row = cursor.fetchone()
+  conn.close()
+  username = user_row[0] if user_row else ''
+  return render_template_string(SETTINGS_HTML, username=username)
 
-@app.route("/update_credentials", methods=["POST"])
+
+@app.route('/update_credentials', methods=['POST'])
 def update_credentials():
-    if "user_id" not in session: return redirect("/")
-    new_password = request.form.get("new_password", "").strip()
-    if not new_password: return "<script>alert('يرجى ادخال كلمة المرور الجديدة!'); window.location.href='/settings';</script>"
-    
-    hashed_password = generate_password_hash(new_password)
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hashed_password, session["user_id"]))
-    conn.commit()
-    conn.close()
-    return "<script>alert('تم تحديث كلمة المرور بنجاح!'); window.location.href='/settings';</script>"
+  if 'user_id' not in session:
+    return redirect('/')
+  new_password = request.form.get('new_password', '').strip()
+  if not new_password:
+    return (
+        '<script>alert("يرجى ادخال كلمة المرور الجديدة!");'
+        ' window.location.href="/settings";</script>'
+    )
 
-@app.route("/delete_account", methods=["POST"])
+  hashed_password = generate_password_hash(new_password)
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  cursor.execute(
+      'UPDATE users SET password_hash = ? WHERE id = ?',
+      (hashed_password, session['user_id']),
+  )
+  conn.commit()
+  conn.close()
+  return (
+      '<script>alert("تم تحديث كلمة المرور بنجاح!");'
+      ' window.location.href="/settings";</script>'
+  )
+
+
+@app.route('/delete_account', methods=['POST'])
 def delete_account():
-    if "user_id" not in session: return redirect("/")
-    user_id = session["user_id"]
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM app_accounts WHERE user_id = ?", (user_id,))
-    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    conn.commit()
-    conn.close()
-    session.clear()
-    return redirect("/")
+  if 'user_id' not in session:
+    return redirect('/')
+  user_id = session['user_id']
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  cursor.execute('DELETE FROM app_accounts WHERE user_id = ?', (user_id,))
+  cursor.execute('DELETE FROM users WHERE id = ?', (user_id,))
+  conn.commit()
+  conn.close()
+  session.clear()
+  return redirect('/')
 
-@app.route("/about")
+
+@app.route('/about')
 def about_page():
-    return render_template_string(ABOUT_HTML)
+  return render_template_string(ABOUT_HTML)
 
-@app.route("/admin/users")
+
+@app.route('/admin/users')
 def admin_users():
-    if "user_id" not in session: return redirect("/")
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT username FROM users WHERE id = ?", (session["user_id"],))
-    user_row = cursor.fetchone()
-    if not user_row or user_row[0] not in ['morad', 'admin']:
-        conn.close()
-        return "غير مسموح لك بالوصول لهذه الصفحة.", 403
-    
-    cursor.execute('''
+  if 'user_id' not in session:
+    return redirect('/')
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  cursor.execute(
+      'SELECT username FROM users WHERE id = ?', (session['user_id'],)
+  )
+  user_row = cursor.fetchone()
+  if not user_row or user_row[0] not in ['morad', 'admin']:
+    conn.close()
+    return 'غير مسموح لك بالوصول لهذه الصفحة.', 403
+
+  cursor.execute("""
         SELECT users.id, users.username, COUNT(app_accounts.id) 
         FROM users 
         LEFT JOIN app_accounts ON users.id = app_accounts.user_id 
         GROUP BY users.id
-    ''')
-    users_data = cursor.fetchall()
-    conn.close()
-    return render_template_string(ADMIN_HTML, users_data=users_data)
-
+    """)
+  users_data = cursor.fetchall()
+  conn.close()
+  return render_template_string(ADMIN_HTML, users_data=users_data)
 
 
 def send_email_code(to_email, code, purpose):
-    """Send a one-time code using SMTP environment settings."""
-    smtp_host = os.environ.get("SMTP_HOST", "").strip()
-    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
-    smtp_user = os.environ.get("SMTP_USER", "").strip()
-    smtp_password = os.environ.get("SMTP_PASSWORD", "")
-    smtp_from = os.environ.get("SMTP_FROM", smtp_user).strip()
-    if not all([smtp_host, smtp_user, smtp_password, smtp_from]):
-        raise RuntimeError("إعدادات البريد غير مكتملة: SMTP_HOST وSMTP_PORT وSMTP_USER وSMTP_PASSWORD وSMTP_FROM")
-    msg = EmailMessage()
-    msg["Subject"] = "رمز التحقق - مدير الحسابات"
-    msg["From"] = smtp_from
-    msg["To"] = to_email
-    msg.set_content(
-        f"مرحبًا،\n\nرمز التحقق الخاص بك هو: {code}\n"
-        "صلاحية الرمز 10 دقائق. لا تشارك الرمز مع أي شخص.\n\n"
-        "إذا لم تطلب هذا الرمز، فتجاهل الرسالة."
+  """Send a one-time code using SMTP environment settings."""
+  smtp_host = os.environ.get('SMTP_HOST', 'smtp.gmail.com').strip()
+  smtp_port = int(os.environ.get('SMTP_PORT', '465'))
+  smtp_user = os.environ.get('SMTP_USER', '').strip()
+  smtp_password = os.environ.get('SMTP_PASSWORD', '')
+  smtp_from = os.environ.get('SMTP_FROM', smtp_user).strip()
+  if not all([smtp_host, smtp_user, smtp_password, smtp_from]):
+    raise RuntimeError(
+        'إعدادات البريد غير مكتملة: SMTP_HOST وSMTP_PORT وSMTP_USER'
+        ' وSMTP_PASSWORD وSMTP_FROM'
     )
-    with smtplib.SMTP(smtp_host, smtp_port, timeout=20) as server:
-        server.starttls()
-        server.login(smtp_user, smtp_password)
-        server.send_message(msg)
+  msg = EmailMessage()
+  msg['Subject'] = 'رمز التحقق - مدير الحسابات'
+  msg['From'] = smtp_from
+  msg['To'] = to_email
+  msg.set_content(
+      f'مرحبًا،\n\nرمز التحقق الخاص بك هو: {code}\n'
+      'صلاحية الرمز 10 دقائق. لا تشارك الرمز مع أي شخص.\n\n'
+      'إذا لم تطلب هذا الرمز، فتجاهل الرسالة.'
+  )
+  # التعديل الرئيسي: استخدام SMTP_SSL بدلاً من SMTP مع starttls لدعم المنفذ 465
+  with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=20) as server:
+    server.login(smtp_user, smtp_password)
+    server.send_message(msg)
 
 
 def create_email_code(email, purpose, payload=None):
-    code = f"{secrets.randbelow(1000000):06d}"
-    code_hash = hashlib.sha256(code.encode()).hexdigest()
-    conn = get_db_connection()
-    try:
-        conn.execute("DELETE FROM auth_codes WHERE email = ? AND purpose = ?", (email, purpose))
-        conn.execute(
-            "INSERT INTO auth_codes (email, purpose, code_hash, payload, expires_at, attempts) VALUES (?, ?, ?, ?, ?, 0)",
-            (email, purpose, code_hash, payload, time.time() + 600)
-        )
-        conn.commit()
-    finally:
-        conn.close()
-    send_email_code(email, code, purpose)
+  code = f'{secrets.randbelow(1000000):06d}'
+  code_hash = hashlib.sha256(code.encode()).hexdigest()
+  conn = get_db_connection()
+  try:
+    conn.execute(
+        'DELETE FROM auth_codes WHERE email = ? AND purpose = ?',
+        (email, purpose),
+    )
+    conn.execute(
+        'INSERT INTO auth_codes (email, purpose, code_hash, payload,'
+        ' expires_at, attempts) VALUES (?, ?, ?, ?, ?, 0)',
+        (email, purpose, code_hash, payload, time.time() + 600),
+    )
+    conn.commit()
+  finally:
+    conn.close()
+  send_email_code(email, code, purpose)
 
 
 def verify_email_code(email, purpose, code):
-    conn = get_db_connection()
-    try:
-        row = conn.execute(
-            "SELECT id, code_hash, payload, expires_at, attempts FROM auth_codes "
-            "WHERE email = ? AND purpose = ? ORDER BY id DESC LIMIT 1",
-            (email, purpose)
-        ).fetchone()
-        if not row or row[3] < time.time() or row[4] >= 5:
-            return None
-        conn.execute("UPDATE auth_codes SET attempts = attempts + 1 WHERE id = ?", (row[0],))
-        conn.commit()
-        if secrets.compare_digest(row[1], hashlib.sha256(code.strip().encode()).hexdigest()):
-            conn.execute("DELETE FROM auth_codes WHERE email = ? AND purpose = ?", (email, purpose))
-            conn.commit()
-            return row[2]
-        return False
-    finally:
-        conn.close()
+  conn = get_db_connection()
+  try:
+    row = conn.execute(
+        'SELECT id, code_hash, payload, expires_at, attempts FROM auth_codes '
+        'WHERE email = ? AND purpose = ? ORDER BY id DESC LIMIT 1',
+        (email, purpose),
+    ).fetchone()
+    if not row or row[3] < time.time() or row[4] >= 5:
+      return None
+    conn.execute(
+        'UPDATE auth_codes SET attempts = attempts + 1 WHERE id = ?', (row[0],)
+    )
+    conn.commit()
+    if secrets.compare_digest(
+        row[1], hashlib.sha256(code.strip().encode()).hexdigest()
+    ):
+      conn.execute(
+          'DELETE FROM auth_codes WHERE email = ? AND purpose = ?',
+          (email, purpose),
+      )
+      conn.commit()
+      return row[2]
+    return False
+  finally:
+    conn.close()
 
 
 OTP_HTML = """
@@ -961,187 +1086,257 @@ a{color:#93c5fd} .error{color:#fca5a5}
 """
 
 
-@app.route("/verify-registration", methods=["GET", "POST"])
+@app.route('/verify-registration', methods=['GET', 'POST'])
 def verify_registration():
-    email = session.get("pending_registration_email", "")
-    if not email:
-        return redirect("/")
-    error = ""
-    if request.method == "POST":
-        payload = verify_email_code(email, "register", request.form.get("code", ""))
-        if payload is not False and payload is not None:
-            # Pending data is kept in the signed session, not in the URL.
-            password_hash = session.get("pending_registration_password_hash")
-            if not password_hash:
-                session.pop("pending_registration_email", None)
-                return redirect("/")
-            conn = get_db_connection()
-            try:
-                conn.execute(
-                    "INSERT INTO users (username, password_hash, email) VALUES (?, ?, ?)",
-                    (email, password_hash, email)
-                )
-                conn.commit()
-            except sqlite3.IntegrityError:
-                error = "هذا البريد مسجل بالفعل. جرّب تسجيل الدخول."
-            finally:
-                conn.close()
-            if not error:
-                session.pop("pending_registration_email", None)
-                session.pop("pending_registration_password_hash", None)
-                return "<script>alert('تم التحقق وإنشاء الحساب بنجاح. سجّل الدخول الآن.'); location.href='/';</script>"
-        else:
-            error = "الرمز غير صحيح أو انتهت صلاحيته. حاول طلب رمز جديد."
-    return render_template_string(OTP_HTML, title="تأكيد البريد الإلكتروني",
-        message=f"أرسلنا رمز تحقق إلى {email}. أدخل الرمز خلال 10 دقائق.",
-        mode="code", email=email, button="تأكيد البريد", error=error)
-
-
-@app.route("/verify-login", methods=["GET", "POST"])
-def verify_login():
-    email = session.get("pending_login_email", "")
-    if not email:
-        return redirect("/")
-    error = ""
-    if request.method == "POST":
-        result = verify_email_code(email, "login", request.form.get("code", ""))
-        if result is not False and result is not None:
-            user_id = session.get("pending_login_user_id")
-            session.pop("pending_login_email", None)
-            session.pop("pending_login_user_id", None)
-            session["user_id"] = user_id
-            session["last_active"] = time.time()
-            return redirect("/")
-        error = "الرمز غير صحيح أو انتهت صلاحيته. حاول مرة أخرى."
-    return render_template_string(OTP_HTML, title="رمز تسجيل الدخول",
-        message=f"أرسلنا رمزًا إلى {email}. أدخل الرمز لإكمال تسجيل الدخول.",
-        mode="code", email=email, button="تأكيد وتسجيل الدخول", error=error)
-
-
-@app.route("/forgot-password", methods=["GET", "POST"])
-def forgot_password():
-    error = ""
-    if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        conn = get_db_connection()
-        user = conn.execute("SELECT id FROM users WHERE lower(email) = ?", (email,)).fetchone()
+  email = session.get('pending_registration_email', '')
+  if not email:
+    return redirect('/')
+  error = ''
+  if request.method == 'POST':
+    payload = verify_email_code(email, 'register', request.form.get('code', ''))
+    if payload is not False and payload is not None:
+      # Pending data is kept in the signed session, not in the URL.
+      password_hash = session.get('pending_registration_password_hash')
+      if not password_hash:
+        session.pop('pending_registration_email', None)
+        return redirect('/')
+      conn = get_db_connection()
+      try:
+        conn.execute(
+            'INSERT INTO users (username, password_hash, email) VALUES (?, ?,'
+            ' ?)',
+            (email, password_hash, email),
+        )
+        conn.commit()
+      except sqlite3.IntegrityError:
+        error = 'هذا البريد مسجل بالفعل. جرّب تسجيل الدخول.'
+      finally:
         conn.close()
-        if user:
-            try:
-                create_email_code(email, "reset")
-                session["pending_reset_email"] = email
-                return redirect("/reset-password")
-            except Exception:
-                app.logger.exception("Email delivery failed for password reset")
-                error = "تعذر إرسال الرمز. إعدادات البريد تحتاج إلى ضبط."
-        else:
-            # Avoid disclosing whether an account exists.
-            error = "إذا كان البريد مسجلًا، فستصلك رسالة. تحقق من البريد أو جرّب مرة أخرى."
-    return render_template_string("""
+      if not error:
+        session.pop('pending_registration_email', None)
+        session.pop('pending_registration_password_hash', None)
+        return (
+            '<script>alert("تم التحقق وإنشاء الحساب بنجاح. سجّل الدخول'
+            ' الآن."); location.href="/";</script>'
+        )
+    else:
+      error = 'الرمز غير صحيح أو انتهت صلاحيته. حاول طلب رمز جديد.'
+  return render_template_string(
+      OTP_HTML,
+      title='تأكيد البريد الإلكتروني',
+      message=f'أرسلنا رمز تحقق إلى {email}. أدخل الرمز خلال 10 دقائق.',
+      mode='code',
+      email=email,
+      button='تأكيد البريد',
+      error=error,
+  )
+
+
+@app.route('/verify-login', methods=['GET', 'POST'])
+def verify_login():
+  email = session.get('pending_login_email', '')
+  if not email:
+    return redirect('/')
+  error = ''
+  if request.method == 'POST':
+    result = verify_email_code(email, 'login', request.form.get('code', ''))
+    if result is not False and result is not None:
+      user_id = session.get('pending_login_user_id')
+      session.pop('pending_login_email', None)
+      session.pop('pending_login_user_id', None)
+      session['user_id'] = user_id
+      session['last_active'] = time.time()
+      return redirect('/')
+    error = 'الرمز غير صحيح أو انتهت صلاحيته. حاول مرة أخرى.'
+  return render_template_string(
+      OTP_HTML,
+      title='رمز تسجيل الدخول',
+      message=f'أرسلنا رمزًا إلى {email}. أدخل الرمز لإكمال تسجيل الدخول.',
+      mode='code',
+      email=email,
+      button='تأكيد وتسجيل الدخول',
+      error=error,
+  )
+
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+  error = ''
+  if request.method == 'POST':
+    email = request.form.get('email', '').strip().lower()
+    conn = get_db_connection()
+    user = conn.execute(
+        'SELECT id FROM users WHERE lower(email) = ?', (email,)
+    ).fetchone()
+    conn.close()
+    if user:
+      try:
+        create_email_code(email, 'reset')
+        session['pending_reset_email'] = email
+        return redirect('/reset-password')
+      except Exception:
+        app.logger.exception('Email delivery failed for password reset')
+        error = 'تعذر إرسال الرمز. إعدادات البريد تحتاج إلى ضبط.'
+    else:
+      # Avoid disclosing whether an account exists.
+      error = (
+          'إذا كان البريد مسجلًا، فستصلك رسالة. تحقق من البريد أو جرّب مرة'
+          ' أخرى.'
+      )
+  return render_template_string(
+      """
     <!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <style>body{background:#0b0f19;color:white;font-family:Arial;display:grid;place-items:center;min-height:100vh;padding:18px}.card{background:#111827;padding:26px;border-radius:14px;width:min(420px,100%);box-sizing:border-box}input,button{box-sizing:border-box;width:100%;padding:13px;margin:10px 0;border-radius:8px}input{background:#1f2937;color:white;border:1px solid #374151}button{background:#16a34a;color:white;border:0;font-weight:bold}.err{color:#fca5a5}a{color:#93c5fd}</style>
     <div class="card"><h2>استعادة كلمة المرور</h2><p>اكتب بريدك الإلكتروني لنرسل لك رمز إعادة التعيين.</p>{% if error %}<p class="err">{{ error }}</p>{% endif %}
     <form method="post"><input type="email" name="email" placeholder="البريد الإلكتروني" required><button>إرسال رمز التحقق</button></form><a href="/">العودة لتسجيل الدخول</a></div></html>
-    """, error=error)
+    """,
+      error=error,
+  )
 
 
-@app.route("/reset-password", methods=["GET", "POST"])
+@app.route('/reset-password', methods=['GET', 'POST'])
 def reset_password():
-    email = session.get("pending_reset_email", "")
-    if not email:
-        return redirect("/forgot-password")
-    error = ""
-    if request.method == "POST":
-        code = request.form.get("code", "")
-        result = verify_email_code(email, "reset", code)
-        if result is not False and result is not None:
-            session["reset_code_verified_email"] = email
-            return redirect("/choose-new-password")
-        error = "الرمز غير صحيح أو انتهت صلاحيته."
-    return render_template_string(OTP_HTML, title="التحقق لاستعادة الحساب",
-        message=f"أرسلنا رمز استعادة إلى {email}. أدخل الرمز خلال 10 دقائق.",
-        mode="code", email=email, button="التحقق من الرمز", error=error)
+  email = session.get('pending_reset_email', '')
+  if not email:
+    return redirect('/forgot-password')
+  error = ''
+  if request.method == 'POST':
+    code = request.form.get('code', '')
+    result = verify_email_code(email, 'reset', code)
+    if result is not False and result is not None:
+      session['reset_code_verified_email'] = email
+      return redirect('/choose-new-password')
+    error = 'الرمز غير صحيح أو انتهت صلاحيته.'
+  return render_template_string(
+      OTP_HTML,
+      title='التحقق لاستعادة الحساب',
+      message=f'أرسلنا رمز استعادة إلى {email}. أدخل الرمز خلال 10 دقائق.',
+      mode='code',
+      email=email,
+      button='التحقق من الرمز',
+      error=error,
+  )
 
 
-@app.route("/choose-new-password", methods=["GET", "POST"])
+@app.route('/choose-new-password', methods=['GET', 'POST'])
 def choose_new_password():
-    email = session.get("reset_code_verified_email", "")
-    if not email:
-        return redirect("/forgot-password")
-    error = ""
-    if request.method == "POST":
-        password = request.form.get("password", "")
-        if len(password) < 6:
-            error = "كلمة المرور يجب أن تكون 6 أحرف على الأقل."
-        else:
-            conn = get_db_connection()
-            conn.execute("UPDATE users SET password_hash = ? WHERE lower(email) = ?",
-                         (generate_password_hash(password), email))
-            conn.commit()
-            conn.close()
-            session.pop("pending_reset_email", None)
-            session.pop("reset_code_verified_email", None)
-            return "<script>alert('تم تغيير كلمة المرور بنجاح. يمكنك تسجيل الدخول.'); location.href='/';</script>"
-    return render_template_string(OTP_HTML, title="إنشاء كلمة مرور جديدة",
-        message="اكتب كلمة المرور الجديدة. استخدم 6 أحرف على الأقل.",
-        mode="new_password", email=email, button="حفظ كلمة المرور الجديدة", error=error)
-
-
-@app.route("/register", methods=["POST"])
-def register():
-    email = request.form.get("email", "").strip().lower()
-    password = request.form.get("password", "")
-    if not email or "@" not in email or "." not in email.rsplit("@", 1)[-1]:
-        return "<script>alert('يرجى إدخال بريد إلكتروني صحيح.'); location.href='/';</script>"
+  email = session.get('reset_code_verified_email', '')
+  if not email:
+    return redirect('/forgot-password')
+  error = ''
+  if request.method == 'POST':
+    password = request.form.get('password', '')
     if len(password) < 6:
-        return "<script>alert('كلمة المرور يجب أن تكون 6 أحرف على الأقل.'); location.href='/';</script>"
-    conn = get_db_connection()
-    exists = conn.execute("SELECT 1 FROM users WHERE lower(email) = ? OR lower(username) = ?", (email, email)).fetchone()
-    conn.close()
-    if exists:
-        return "<script>alert('هذا البريد مسجل بالفعل. جرّب تسجيل الدخول.'); location.href='/';</script>"
-    session["pending_registration_email"] = email
-    session["pending_registration_password_hash"] = generate_password_hash(password)
-    try:
-        create_email_code(email, "register")
-        return redirect("/verify-registration")
-    except Exception:
-        app.logger.exception("Email delivery failed during registration")
-        session.pop("pending_registration_email", None)
-        session.pop("pending_registration_password_hash", None)
-        return "<script>alert('تعذر إرسال رمز التحقق. يجب ضبط إعدادات البريد أولًا.'); location.href='/';</script>"
+      error = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.'
+    else:
+      conn = get_db_connection()
+      conn.execute(
+          'UPDATE users SET password_hash = ? WHERE lower(email) = ?',
+          (generate_password_hash(password), email),
+      )
+      conn.commit()
+      conn.close()
+      session.pop('pending_reset_email', None)
+      session.pop('reset_code_verified_email', None)
+      return (
+          '<script>alert("تم تغيير كلمة المرور بنجاح. يمكنك تسجيل'
+          ' الدخول."); location.href="/";</script>'
+      )
+  return render_template_string(
+      OTP_HTML,
+      title='إنشاء كلمة مرور جديدة',
+      message='اكتب كلمة المرور الجديدة. استخدم 6 أحرف على الأقل.',
+      mode='new_password',
+      email=email,
+      button='حفظ كلمة المرور الجديدة',
+      error=error,
+  )
 
 
-@app.route("/login", methods=["POST"])
+@app.route('/register', methods=['POST'])
+def register():
+  email = request.form.get('email', '').strip().lower()
+  password = request.form.get('password', '')
+  if not email or '@' not in email or '.' not in email.rsplit('@', 1)[-1]:
+    return (
+        '<script>alert("يرجى إدخال بريد إلكتروني صحيح.");'
+        ' location.href="/";</script>'
+    )
+  if len(password) < 6:
+    return (
+        '<script>alert("كلمة المرور يجب أن تكون 6 أحرف على الأقل.");'
+        ' location.href="/";</script>'
+    )
+  conn = get_db_connection()
+  exists = conn.execute(
+      'SELECT 1 FROM users WHERE lower(email) = ? OR lower(username) = ?',
+      (email, email),
+  ).fetchone()
+  conn.close()
+  if exists:
+    return (
+        '<script>alert("هذا البريد مسجل بالفعل. جرّب تسجيل الدخول.");'
+        ' location.href="/";</script>'
+    )
+  session['pending_registration_email'] = email
+  session['pending_registration_password_hash'] = generate_password_hash(
+      password
+  )
+  try:
+    create_email_code(email, 'register')
+    return redirect('/verify-registration')
+  except Exception:
+    app.logger.exception('Email delivery failed during registration')
+    session.pop('pending_registration_email', None)
+    session.pop('pending_registration_password_hash', None)
+    return (
+        '<script>alert("تعذر إرسال رمز التحقق. يجب ضبط إعدادات البريد'
+        ' أولًا."); location.href="/";</script>'
+    )
+
+
+@app.route('/login', methods=['POST'])
 def login():
-    email = request.form.get("email", "").strip().lower()
-    password = request.form.get("password", "")
-    conn = get_db_connection()
-    user = conn.execute(
-        "SELECT id, password_hash, email FROM users WHERE lower(email) = ? OR lower(username) = ? LIMIT 1",
-        (email, email)
-    ).fetchone()
-    conn.close()
-    if user and check_password_hash(user[1], password):
-        verified_email = user[2] or (email if "@" in email else "")
-        if not verified_email or "@" not in verified_email:
-            return "<script>alert('هذا الحساب القديم لا يملك بريدًا موثقًا. أضف بريدًا إلكترونيًا أولًا.'); location.href='/';</script>"
-        session["pending_login_email"] = verified_email
-        session["pending_login_user_id"] = user[0]
-        try:
-            create_email_code(verified_email, "login")
-            return redirect("/verify-login")
-        except Exception:
-            app.logger.exception("Email delivery failed during login")
-            session.pop("pending_login_email", None)
-            session.pop("pending_login_user_id", None)
-            return "<script>alert('تعذر إرسال رمز الدخول. إعدادات البريد تحتاج إلى ضبط.'); location.href='/';</script>"
-    return "<script>alert('البريد الإلكتروني أو كلمة المرور غير صحيحة.'); location.href='/';</script>"
+  email = request.form.get('email', '').strip().lower()
+  password = request.form.get('password', '')
+  conn = get_db_connection()
+  user = conn.execute(
+      'SELECT id, password_hash, email FROM users WHERE lower(email) = ? OR'
+      ' lower(username) = ? LIMIT 1',
+      (email, email),
+  ).fetchone()
+  conn.close()
+  if user and check_password_hash(user[1], password):
+    verified_email = user[2] or (email if '@' in email else '')
+    if not verified_email or '@' not in verified_email:
+      return (
+          '<script>alert("هذا الحساب القديم لا يملك بريدًا موثقًا. أضف بريدًا'
+          ' إلكترونيًا أولًا."); location.href="/";</script>'
+      )
+    session['pending_login_email'] = verified_email
+    session['pending_login_user_id'] = user[0]
+    try:
+      create_email_code(verified_email, 'login')
+      return redirect('/verify-login')
+    except Exception:
+      app.logger.exception('Email delivery failed during login')
+      session.pop('pending_login_email', None)
+      session.pop('pending_login_user_id', None)
+      return (
+          '<script>alert("تعذر إرسال رمز الدخول. إعدادات البريد تحتاج إلى'
+          ' ضبط."); location.href="/";</script>'
+      )
+  return (
+      '<script>alert("البريد الإلكتروني أو كلمة المرور غير صحيحة.");'
+      ' location.href="/";</script>'
+  )
 
-@app.route("/logout")
+
+@app.route('/logout')
 def logout():
-    session.clear()
-    return redirect("/")
+  session.clear()
+  return redirect('/')
 
-if __name__ == "__main__":
-    app.run(debug=True)
+
+if __name__ == '__main__':
+  app.run(debug=True)
