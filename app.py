@@ -26,7 +26,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'morad_super_secure_adsense_key_20
 # إعدادات الموقع (عدّل هذه القيم قبل النشر)
 # ══════════════════════════════════════════════════════════
 SITE_URL        = os.environ.get('SITE_URL', 'https://your-domain.com')
-ADSENSE_CLIENT  = os.environ.get('ADSENSE_CLIENT', 'ca-pub-XXXXXXXXXXXXXXXXX')   # ← ضع معرف AdSense
+ADSENSE_CLIENT  = os.environ.get('ADSENSE_CLIENT', 'ca-pub-6038377293496140')
 ADSENSE_SLOT_TOP    = os.environ.get('ADSENSE_SLOT_TOP',    '1234567890')
 ADSENSE_SLOT_MID    = os.environ.get('ADSENSE_SLOT_MID',    '0987654321')
 ADSENSE_SLOT_BOTTOM = os.environ.get('ADSENSE_SLOT_BOTTOM', '1122334455')
