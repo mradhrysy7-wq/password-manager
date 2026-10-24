@@ -88,13 +88,15 @@ BASE_CSS = """
 :root{--bg:#0b0f19;--card:#111827;--text:#9ca3af;--heading:#f9fafb;--ibg:#1f2937;--ibr:#374151;--itxt:#fff;--btn:#16a34a;--bth:#15803d;--brd:#1f2937;--danger:#dc2626;--info:#2563eb;--muted:#6b7280;--accent:#3b82f6;}
 .light-theme{--bg:#f8fafc;--card:#fff;--text:#374151;--heading:#111827;--ibg:#f9fafb;--ibr:#d1d5db;--itxt:#111827;--btn:#16a34a;--bth:#15803d;--brd:#e5e7eb;--danger:#dc2626;--info:#2563eb;--muted:#6b7280;--accent:#2563eb;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;line-height:1.6;direction:rtl;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;line-height:1.6;direction:rtl;transition:background .2s,color .2s;}
 a{color:inherit;text-decoration:none}
-.site-nav{background:var(--card);border-bottom:1px solid var(--brd);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:200;}
-.nav-logo{font-size:18px;font-weight:800;color:var(--heading);display:flex;align-items:center;gap:8px}
+.site-nav{background:var(--card);border-bottom:1px solid var(--brd);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.15);}
+.nav-logo{font-size:18px;font-weight:800;color:var(--heading);display:flex;align-items:center;gap:8px;cursor:pointer;}
 .nav-links{display:flex;gap:8px;align-items:center;}
-.nav-links a,.nav-links button{font-size:13px;color:var(--text);padding:7px 13px;border-radius:7px;border:none;background:none;cursor:pointer;}
+.nav-links a,.nav-links button{font-size:13px;color:var(--text);padding:7px 13px;border-radius:7px;border:none;background:none;cursor:pointer;white-space:nowrap;font-family:inherit;}
+.nav-links a:hover,.nav-links button:hover{background:var(--brd);color:var(--heading);}
 .nav-cta{background:var(--btn)!important;color:#fff!important;font-weight:700}
+.nav-cta:hover{background:var(--bth)!important;}
 .wrap{max-width:980px;margin:0 auto;padding:28px 18px}
 .wrap-narrow{max-width:720px;margin:0 auto;padding:28px 18px}
 .card{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:26px;box-shadow:0 4px 18px rgba(0,0,0,.2);}
@@ -119,15 +121,28 @@ a{color:inherit;text-decoration:none}
 table{width:100%;border-collapse:collapse}
 th{background:var(--ibg);color:var(--muted);font-size:12px;padding:10px 14px;text-align:center;}
 td{padding:12px 14px;text-align:center;font-size:13px;border-bottom:1px solid var(--brd);}
-.hero{text-align:center;padding:50px 18px 30px}
+.hero{text-align:center;padding:50px 18px 24px}
 .hero h1{font-size:clamp(24px,5vw,36px);color:var(--heading);font-weight:900;margin-bottom:12px}
+.hero p{font-size:15px;line-height:1.7;max-width:620px;margin:0 auto 12px;color:var(--text);}
 .badge{display:inline-block;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:700;background:rgba(59,130,246,.15);color:#60a5fa;margin-bottom:12px}
+.ad-wrap{margin:18px 0;text-align:center;min-height:75px;background:var(--ibg);border-radius:8px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--brd);color:var(--muted);font-size:13px}
+.welcome-panel{position:relative;overflow:hidden;padding:26px 20px;margin-bottom:20px;background:linear-gradient(135deg,var(--card),rgba(37,99,235,.12));border:1px solid rgba(59,130,246,.32);border-radius:14px}
+.welcome-panel h2{font-size:clamp(19px,3vw,24px);color:var(--heading);margin:6px 0 10px;font-weight:800}
+.welcome-panel p{font-size:14px;line-height:1.8;color:var(--text)}
 .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin:20px 0}
-.feat-card{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:22px 16px;text-align:center;cursor:pointer;text-decoration:none;}
+.feat-card{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:22px 16px;text-align:center;cursor:pointer;text-decoration:none;border:1px solid var(--brd);transition:border-color .2s;}
+.feat-card:hover{border-color:var(--accent)}
 .feat-icon{font-size:30px;margin-bottom:8px}
+.feat-card h3{font-size:14px;color:var(--heading);margin-bottom:6px;font-weight:700}
+.feat-card p{font-size:12px;line-height:1.6;color:var(--text)}
 footer.site-footer{background:var(--card);border-top:1px solid var(--brd);margin-top:50px;padding:25px 20px;text-align:center;font-size:13px;color:var(--muted);}
 .footer-links{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:10px}
 .pwd-gen-box{background:var(--ibg);border:1px solid var(--ibr);border-radius:8px;padding:14px;margin:12px 0;}
+@media (max-width:600px){
+  .hide-sm{display:none!important}
+  .nav-links{gap:4px}
+  .nav-links a,.nav-links button{padding:6px 8px;font-size:12px}
+}
 </style>
 """
 
@@ -151,6 +166,21 @@ function generatePassword(targetInputId) {
         display.textContent = res;
     }
 }
+function toggleTheme() {
+    var isLight = document.body.classList.toggle('light-theme');
+    var btn = document.getElementById('themeBtn');
+    if (btn) btn.textContent = isLight ? '🌙' : '☀️';
+    try { localStorage.setItem('theme', isLight ? 'light' : 'dark'); } catch(e){}
+}
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+            var btn = document.getElementById('themeBtn');
+            if (btn) btn.textContent = '🌙';
+        }
+    } catch(e){}
+});
 </script>
 """
 
@@ -162,16 +192,18 @@ def page(content: str, title: str = SITE_NAME, logged_in: bool = False, username
 
     if logged_in:
         nav_right = f"""
-            <a href="/category/تطبيق">📱 التطبيقات</a>
-            <a href="/category/بريد">📧 البريد</a>
-            <a href="/category/موقع">🌐 المواقع</a>
-            <a href="/settings">⚙️ الإعدادات</a>
+            <a href="/category/تطبيق" class="hide-sm">📱 التطبيقات</a>
+            <a href="/category/بريد" class="hide-sm">📧 البريد</a>
+            <a href="/category/موقع" class="hide-sm">🌐 المواقع</a>
+            <a href="/settings" class="hide-sm">⚙️ الإعدادات</a>
+            <button type="button" onclick="toggleTheme()" id="themeBtn" title="تبديل المظهر" style="cursor:pointer;background:none;border:none;font-size:16px;padding:4px 6px;">☀️</button>
             <a href="/logout" class="btn btn-sm btn-danger">خروج</a>
         """
     else:
         nav_right = """
-            <a href="/about">عن الموقع</a>
-            <a href="/contact">تواصل معنا</a>
+            <a href="/about" class="hide-sm">عن الموقع</a>
+            <a href="/contact" class="hide-sm">تواصل معنا</a>
+            <button type="button" onclick="toggleTheme()" id="themeBtn" title="تبديل المظهر" style="cursor:pointer;background:none;border:none;font-size:16px;padding:4px 6px;">☀️</button>
             <a href="/auth" class="nav-cta btn btn-sm">دخول / تسجيل</a>
         """
 
@@ -232,37 +264,46 @@ def index():
         return page(content, title='لوحة التحكم', logged_in=True, username=uname)
 
     content = """
-    <main class="wrap">
+    <main>
         <section class="hero">
             <span class="badge">إدارة حساباتك في مكان واحد</span>
             <h1>كلمات مرورك، تحت سيطرتك الكاملة</h1>
-            <p>نظّم بيانات حساباتك مع تشفير Fernet المتقدم ومولّد كلمات مرور قوي وعشوائي لحماية هويتك الرقمية.</p>
-            <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
-                <a href="/auth" class="btn btn-primary" style="font-size:15px;padding:10px 22px;">ابدأ الآن مجاناً 🚀</a>
-                <a href="#live-generator" class="btn btn-ghost" style="font-size:15px;padding:10px 20px;">تجربة مولد كلمات المرور ⚡</a>
-            </div>
+            <p>نظّم بيانات حساباتك في مكان واحد، مع تشفير كلمات المرور وإمكانية استعادتها وتوليد كلمات مرور قوية.</p>
         </section>
 
-        <!-- Feature Grid Cards -->
-        <div class="feat-grid" style="margin-bottom:32px;">
-            <div class="feat-card">
-                <div class="feat-icon">🔒</div>
-                <h3>تشفير متقدم</h3>
-                <p>كلمات مرورك مشفرة تشفيراً متماثلاً قوياً بتقنية Fernet/AES.</p>
+        <div class="wrap" style="padding-top:0;">
+            <!-- AdSense Box -->
+            <div class="ad-wrap" aria-label="إعلان" role="region">
+                <div style="opacity:0.6;font-size:13px;">📢 مساحة إعلانية متوافقة مع Google AdSense</div>
             </div>
-            <div class="feat-card">
-                <div class="feat-icon">⚡</div>
-                <h3>مولد كلمات مرور</h3>
-                <p>توليد كلمات مرور قوية بضغطة زر واحدة غير قابلة للتخمين.</p>
-            </div>
-            <div class="feat-card">
-                <div class="feat-icon">📱</div>
-                <h3>متوافق الجوال</h3>
-                <p>يعمل على كافة الأجهزة والشاشات بسلاسة وأمان تام.</p>
-            </div>
-        </div>
 
-        <div style="display:flex;flex-direction:column;gap:32px;margin-bottom:40px;">
+            <!-- Welcome Card -->
+            <section class="card welcome-panel">
+                <span class="badge">مرحباً بك</span>
+                <h2>👋 أهلاً بك في مدير الحسابات الشامل</h2>
+                <p>منصة سريعة وآمنة لتنظيم بيانات حساباتك في مكان واحد مع تشفير عالي الكفاءة.</p>
+            </section>
+
+            <!-- Feature Grid Cards -->
+            <div class="feat-grid" style="margin-bottom:24px;">
+                <div class="feat-card">
+                    <div class="feat-icon">🔒</div>
+                    <h3>تشفير متقدم</h3>
+                    <p>كلمات مرورك مشفرة تشفيراً متماثلاً قوياً.</p>
+                </div>
+                <div class="feat-card">
+                    <div class="feat-icon">⚡</div>
+                    <h3>مولد كلمات مرور</h3>
+                    <p>توليد كلمات مرور قوية بضغطة زر واحدة.</p>
+                </div>
+                <div class="feat-card">
+                    <div class="feat-icon">📱</div>
+                    <h3>متوافق الجوال</h3>
+                    <p>يعمل على كافة الأجهزة والشاشات بسلاسة وأمان تام.</p>
+                </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:32px;margin-bottom:40px;">
             
             <!-- 1. LIVE GENERATOR & TESTER -->
             <section id="live-generator" class="card" style="border:1px solid var(--accent);padding:24px;">
@@ -273,7 +314,7 @@ def index():
                 <div style="display:flex;align-items:center;gap:8px;background:var(--ibg);border:1px solid var(--ibr);border-radius:10px;padding:12px 16px;margin-bottom:14px;flex-wrap:wrap;">
                     <span id="home-gen-pass" style="flex:1;font-family:monospace;font-size:16px;font-weight:800;color:var(--heading);letter-spacing:1px;direction:ltr;text-align:left;">P@ssw0rd_99xK#m2026</span>
                     <button type="button" class="btn btn-ghost btn-sm" onclick="genLivePassword()">🔄 جديد</button>
-                    <button type="button" class="btn btn-primary btn-sm" onclick="copyLivePassword()">📋 نسخ</button>
+                    <button id="home-copy-btn" type="button" class="btn btn-primary btn-sm" onclick="copyLivePassword()">📋 نسخ</button>
                 </div>
 
                 <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px;">
@@ -380,6 +421,7 @@ def index():
                 </div>
             </section>
 
+            </div>
         </div>
     </main>
 
@@ -401,9 +443,18 @@ def index():
     }
     function copyLivePassword() {
         var pwd = document.getElementById('home-gen-pass').textContent;
-        navigator.clipboard.writeText(pwd).then(function() {
-            alert('تم نسخ كلمة المرور إلى الحافظة بنجاح ✓');
-        });
+        var btn = document.getElementById('home-copy-btn');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(pwd).then(function() {
+                if (btn) {
+                    var prev = btn.textContent;
+                    btn.textContent = 'تم النسخ ✓';
+                    setTimeout(function(){ btn.textContent = prev; }, 2000);
+                }
+            }).catch(function() {
+                if (btn) btn.textContent = 'تم النسخ ✓';
+            });
+        }
     }
     </script>"""
     return page(content, title='الرئيسية')
