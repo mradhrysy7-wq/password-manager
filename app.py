@@ -15,7 +15,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'morad_super_secure_key_2026')
 SITE_NAME = 'مدير الحسابات الشامل'
 CONTACT_EMAIL = 'mradhrysy7@gmail.com'
 
-# مفتاح التشفير
+# Encryption
 KEY_FILE = 'secret.key'
 if os.path.exists(KEY_FILE):
     with open(KEY_FILE, 'rb') as kf:
@@ -40,7 +40,7 @@ def decrypt_password(enc: str) -> str:
     except Exception:
         return '[خطأ في فك التشفير]'
 
-# قاعدة البيانات
+# Database
 DB_PATH = os.path.join(os.getcwd(), 'database_app_details.db')
 
 def get_db():
@@ -86,6 +86,7 @@ def session_guard():
 BASE_CSS = """
 <style>
 :root{--bg:#0b0f19;--card:#111827;--text:#9ca3af;--heading:#f9fafb;--ibg:#1f2937;--ibr:#374151;--itxt:#fff;--btn:#16a34a;--bth:#15803d;--brd:#1f2937;--danger:#dc2626;--info:#2563eb;--muted:#6b7280;--accent:#3b82f6;}
+.light-theme{--bg:#f8fafc;--card:#fff;--text:#374151;--heading:#111827;--ibg:#f9fafb;--ibr:#d1d5db;--itxt:#111827;--btn:#16a34a;--bth:#15803d;--brd:#e5e7eb;--danger:#dc2626;--info:#2563eb;--muted:#6b7280;--accent:#2563eb;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;line-height:1.6;direction:rtl;}
 a{color:inherit;text-decoration:none}
@@ -130,7 +131,6 @@ footer.site-footer{background:var(--card);border-top:1px solid var(--brd);margin
 </style>
 """
 
-# أداة توليد كلمات المرور الآمنة
 PASSWORD_GENERATOR_JS = """
 <script>
 function generatePassword(targetInputId) {
@@ -145,6 +145,10 @@ function generatePassword(targetInputId) {
     var input = document.getElementById(targetInputId);
     if (input) {
         input.value = res;
+    }
+    var display = document.getElementById('gen-display');
+    if (display) {
+        display.textContent = res;
     }
 }
 </script>
@@ -232,12 +236,176 @@ def index():
         <section class="hero">
             <span class="badge">إدارة حساباتك في مكان واحد</span>
             <h1>كلمات مرورك، تحت سيطرتك الكاملة</h1>
-            <p>نظّم بيانات حساباتك مع تشفير Fernet المتقدم ومولّد كلمات مرور قوي وعشوائي.</p>
-            <div style="margin-top:20px;">
-                <a href="/auth" class="btn btn-primary" style="font-size:16px;">ابدأ الآن مجاناً 🚀</a>
+            <p>نظّم بيانات حساباتك مع تشفير Fernet المتقدم ومولّد كلمات مرور قوي وعشوائي لحماية هويتك الرقمية.</p>
+            <div style="margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                <a href="/auth" class="btn btn-primary" style="font-size:15px;padding:10px 22px;">ابدأ الآن مجاناً 🚀</a>
+                <a href="#live-generator" class="btn btn-ghost" style="font-size:15px;padding:10px 20px;">تجربة مولد كلمات المرور ⚡</a>
             </div>
         </section>
-    </main>"""
+
+        <!-- Feature Grid Cards -->
+        <div class="feat-grid" style="margin-bottom:32px;">
+            <div class="feat-card">
+                <div class="feat-icon">🔒</div>
+                <h3>تشفير متقدم</h3>
+                <p>كلمات مرورك مشفرة تشفيراً متماثلاً قوياً بتقنية Fernet/AES.</p>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">⚡</div>
+                <h3>مولد كلمات مرور</h3>
+                <p>توليد كلمات مرور قوية بضغطة زر واحدة غير قابلة للتخمين.</p>
+            </div>
+            <div class="feat-card">
+                <div class="feat-icon">📱</div>
+                <h3>متوافق الجوال</h3>
+                <p>يعمل على كافة الأجهزة والشاشات بسلاسة وأمان تام.</p>
+            </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:32px;margin-bottom:40px;">
+            
+            <!-- 1. LIVE GENERATOR & TESTER -->
+            <section id="live-generator" class="card" style="border:1px solid var(--accent);padding:24px;">
+                <span class="badge" style="background:rgba(59,130,246,0.15);color:var(--accent);">⚡ أداة مباشرة</span>
+                <h2 style="font-size:20px;font-weight:800;color:var(--heading);margin-top:8px;">مولّد وفاحص كلمات المرور التفاعلي</h2>
+                <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">جرّب توليد كلمة مرور معقدة أو افحص قوة أي كلمة مرور فوراً</p>
+
+                <div style="display:flex;align-items:center;gap:8px;background:var(--ibg);border:1px solid var(--ibr);border-radius:10px;padding:12px 16px;margin-bottom:14px;flex-wrap:wrap;">
+                    <span id="home-gen-pass" style="flex:1;font-family:monospace;font-size:16px;font-weight:800;color:var(--heading);letter-spacing:1px;direction:ltr;text-align:left;">P@ssw0rd_99xK#m2026</span>
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="genLivePassword()">🔄 جديد</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="copyLivePassword()">📋 نسخ</button>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px;">
+                    <span>مستوى القوة والأمان:</span>
+                    <span id="home-pass-strength" style="font-weight:800;color:#22c55e;">منيعة وممتازة (100%)</span>
+                </div>
+                <div style="height:6px;width:100%;background:var(--ibg);border-radius:4px;overflow:hidden;margin-bottom:16px;">
+                    <div id="home-strength-bar" style="height:100%;width:100%;background:#22c55e;transition:all 0.3s ease;"></div>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--heading);margin-bottom:6px;">
+                    <label for="home-len-range">طول كلمة المرور:</label>
+                    <span id="home-len-label" style="font-weight:800;color:var(--accent);">16 حرفاً</span>
+                </div>
+                <input id="home-len-range" type="range" min="8" max="32" value="16" oninput="updateLiveLen(this.value)" style="width:100%;accent-color:var(--btn);cursor:pointer;margin-bottom:14px;">
+
+                <div style="font-size:12px;color:var(--muted);">
+                    💡 نصيحة: ينصح خبراء الأمن باستخدام 16 حرفاً على الأقل مع مزيج من الرموز والأرقام.
+                </div>
+            </section>
+
+            <!-- 2. HOW IT WORKS (3 STEPS) -->
+            <section>
+                <div style="text-align:center;margin-bottom:20px;">
+                    <span class="badge">سهل وبسيط</span>
+                    <h2 style="font-size:24px;font-weight:800;color:var(--heading);margin-top:8px;">🚀 كيف يعمل مدير الحسابات الشامل؟</h2>
+                    <p style="font-size:14px;color:var(--muted);max-width:600px;margin:6px auto 0;">ثلاث خطوات سهلة لحماية وتنظيم كلمات مرورك والوصول إليها بأمان في أي لحظة</p>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:16px;">
+                    <div class="card" style="padding:22px;">
+                        <div style="font-size:32px;margin-bottom:12px;">1️⃣</div>
+                        <h3 style="font-size:17px;font-weight:700;color:var(--heading);margin-bottom:8px;">أنشئ حسابك الآمن</h3>
+                        <p style="font-size:13px;color:var(--text);line-height:1.6;">سجّل حسابك برقم سري رئيسي في ثوانٍ معدودة دون طلب أي معلومات معقدة أو مشاركة بياناتك.</p>
+                    </div>
+                    <div class="card" style="padding:22px;">
+                        <div style="font-size:32px;margin-bottom:12px;">2️⃣</div>
+                        <h3 style="font-size:17px;font-weight:700;color:var(--heading);margin-bottom:8px;">نظّم وشفّر بياناتك</h3>
+                        <p style="font-size:13px;color:var(--text);line-height:1.6;">أضف حساباتك مصنفة إلى تطبيقات أو بريد أو مواقع، مع تشفير كلمات المرور فورياً بأعلى حماية.</p>
+                    </div>
+                    <div class="card" style="padding:22px;">
+                        <div style="font-size:32px;margin-bottom:12px;">3️⃣</div>
+                        <h3 style="font-size:17px;font-weight:700;color:var(--heading);margin-bottom:8px;">استرجع وولّد في أي وقت</h3>
+                        <p style="font-size:13px;color:var(--text);line-height:1.6;">انسخ كلمات مرورك واسترجعها فوراً، أو ولّد كلمات سر منيعة جديدة عبر مولّد كلمات المرور المدمج.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. FEATURED SECURITY ARTICLES -->
+            <section>
+                <div style="text-align:center;margin-bottom:20px;">
+                    <span class="badge">أمان رقمي</span>
+                    <h2 style="font-size:22px;font-weight:800;color:var(--heading);margin-top:8px;">🛡️ نصائح وتوعية الأمن الرقمي</h2>
+                    <p style="font-size:13px;color:var(--muted);margin-top:4px;">إرشادات عملية لحماية حساباتك وهويتك على الإنترنت من محاولات الاختراق</p>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:16px;">
+                    <div class="card" style="padding:20px;">
+                        <div class="badge" style="margin-bottom:8px;">نصائح كلمات المرور</div>
+                        <h3 style="font-size:16px;color:var(--heading);margin-bottom:8px;">كيف تختار كلمة مرور قوية وغير قابلة للتخمين؟</h3>
+                        <p style="font-size:13px;color:var(--text);line-height:1.6;">اختر كلمات تتجاوز 16 حرفاً تحتوي على حروف كبيرة وصغيرة وأرقام ورموز، وتجنب استخدام نفس الكلمة لأكثر من حساب.</p>
+                    </div>
+                    <div class="card" style="padding:20px;">
+                        <div class="badge" style="margin-bottom:8px;">دليل تقني</div>
+                        <h3 style="font-size:16px;color:var(--heading);margin-bottom:8px;">المصادقة الثنائية (2FA): خط دفاعك الحاسم</h3>
+                        <p style="font-size:13px;color:var(--text);line-height:1.6;">تفعيل التحقق بخطوتين عبر تطبيقات المصادقة يمنع المخترقين من الوصول لحسابك حتى لو تمكنوا بطريقة ما من معرفة كلمة المرور.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. FAQ ACCORDION -->
+            <section class="card" style="padding:24px;">
+                <div style="text-align:center;margin-bottom:20px;">
+                    <span class="badge">إجابات واضحة</span>
+                    <h2 style="font-size:22px;font-weight:800;color:var(--heading);margin-top:8px;">❓ الأسئلة الشائعة</h2>
+                    <p style="font-size:13px;color:var(--muted);margin-top:4px;">إجابات على أهم الاستفسارات حول الأمان والتشفير</p>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <details style="background:var(--ibg);border:1px solid var(--ibr);border-radius:8px;padding:12px 16px;cursor:pointer;" open>
+                        <summary style="font-weight:700;color:var(--heading);font-size:14px;outline:none;">هل بياناتي وكلمات مروري مشفرة وآمنة تماماً؟</summary>
+                        <p style="margin-top:10px;font-size:13px;color:var(--text);line-height:1.6;">نعم بالتأكيد! يتم تشفير كلمات المرور باستخدام خوارزميات التشفير المتماثل المتقدمة (AES / Fernet) محلياً وعلى مستوى الخادم قبل حفظها، ولا يتم تخزين أي كلمة مرور بصيغة نصية مكشوفة.</p>
+                    </details>
+                    <details style="background:var(--ibg);border:1px solid var(--ibr);border-radius:8px;padding:12px 16px;cursor:pointer;">
+                        <summary style="font-weight:700;color:var(--heading);font-size:14px;outline:none;">هل يعمل التطبيق بسلاسة على كافة الهواتف والأجهزة؟</summary>
+                        <p style="margin-top:10px;font-size:13px;color:var(--text);line-height:1.6;">نعم بنسبة 100%. تم تصميم الواجهة بتقنية متجاوبة بالكامل لتعمل بسلاسة وسرعة فائقة على كافة أجهزة أندرويد، آيفون، الأجهزة اللوحية، وشاشات الحواسيب المكتبية.</p>
+                    </details>
+                    <details style="background:var(--ibg);border:1px solid var(--ibr);border-radius:8px;padding:12px 16px;cursor:pointer;">
+                        <summary style="font-weight:700;color:var(--heading);font-size:14px;outline:none;">هل الخدمة مجانية بالكامل؟</summary>
+                        <p style="margin-top:10px;font-size:13px;color:var(--text);line-height:1.6;">نعم، المنصة مجانية ومصممة لمساعدة المستخدمين على إدارة وتنظيم كلمات مرورهم وحماية أنفسهم من مخاطر الاختراق.</p>
+                    </details>
+                    <details style="background:var(--ibg);border:1px solid var(--ibr);border-radius:8px;padding:12px 16px;cursor:pointer;">
+                        <summary style="font-weight:700;color:var(--heading);font-size:14px;outline:none;">كيف يمكنني التواصل معكم للدعم الفني أو الاقتراحات؟</summary>
+                        <p style="margin-top:10px;font-size:13px;color:var(--text);line-height:1.6;">يمكنك مراسلتنا في أي وقت عبر صفحة "تواصل معنا" أو مباشرة عبر البريد الإلكتروني الرسمي: <strong style="color:var(--accent);">mradhrysy7@gmail.com</strong>.</p>
+                    </details>
+                </div>
+            </section>
+
+            <!-- 5. CALL TO ACTION (CTA) -->
+            <section style="background:linear-gradient(135deg, rgba(37,99,235,0.18) 0%, rgba(22,163,74,0.18) 100%);border:1px solid var(--accent);border-radius:16px;padding:32px 24px;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,0.25);">
+                <div style="font-size:38px;margin-bottom:12px;">🔐✨</div>
+                <h2 style="font-size:24px;font-weight:900;color:var(--heading);margin-bottom:8px;">جاهز لحماية وتنظيم كلمات مرورك الآن؟</h2>
+                <p style="font-size:14px;color:var(--text);max-width:540px;margin:0 auto 24px;line-height:1.6;">ابدأ مجاناً اليوم، وتخلص نهائياً من عناء نسيان كلمات المرور أو مخاطر الاعتماد على كلمات مرور ضعيفة.</p>
+                <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
+                    <a href="/auth" class="btn btn-primary" style="font-size:14px;padding:10px 22px;">🚀 إنشاء حساب جديد الآن</a>
+                    <a href="/auth" class="btn btn-ghost" style="font-size:14px;padding:10px 20px;border-color:var(--ibr);color:var(--heading);">🔑 تسجيل الدخول</a>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+    function updateLiveLen(val) {
+        document.getElementById('home-len-label').textContent = val + ' حرفاً';
+        genLivePassword();
+    }
+    function genLivePassword() {
+        var len = parseInt(document.getElementById('home-len-range').value, 10) || 16;
+        var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?';
+        var arr = new Uint32Array(len);
+        window.crypto.getRandomValues(arr);
+        var pwd = '';
+        for (var i = 0; i < len; i++) {
+            pwd += chars[arr[i] % chars.length];
+        }
+        document.getElementById('home-gen-pass').textContent = pwd;
+    }
+    function copyLivePassword() {
+        var pwd = document.getElementById('home-gen-pass').textContent;
+        navigator.clipboard.writeText(pwd).then(function() {
+            alert('تم نسخ كلمة المرور إلى الحافظة بنجاح ✓');
+        });
+    }
+    </script>"""
     return page(content, title='الرئيسية')
 
 @app.route('/category/<cat_type>')
@@ -283,7 +451,7 @@ def category_view(cat_type):
                         <input id="pwd-input" type="text" name="password" placeholder="أدخل أو ولّد كلمة المرور" required autocomplete="off">
                     </div>
                 </div>
-                <!-- أداة توليد كلمة المرور -->
+                <!-- Password Generator Utility -->
                 <div class="pwd-gen-box">
                     <div style="display:flex;justify-content:space-between;align-items:center;">
                         <span style="font-size:13px;font-weight:700;color:var(--heading);">⚡ مولّد كلمات مرور عشوائية قوية</span>
