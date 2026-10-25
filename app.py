@@ -811,6 +811,8 @@ def delete_account():
     conn.close()
     session.clear()
     return redirect('/')
-
+@app.route('/robots.txt')
+def robots():
+    return "User-agent: *\nAllow: /\n", 200, {'Content-Type': 'text/plain; charset=utf-8'}
 if __name__ == '__main__':
     app.run(debug=True)
