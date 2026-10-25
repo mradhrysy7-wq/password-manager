@@ -214,6 +214,7 @@ def page(content: str, title: str = SITE_NAME, logged_in: bool = False, username
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google-site-verification" content="HFVSW9fsSoH92S5tRD8jNQiAT8rq2xluAyz7YHlY-SY" />
 <title>{title} | {SITE_NAME}</title>
 {BASE_CSS}
 {PASSWORD_GENERATOR_JS}
