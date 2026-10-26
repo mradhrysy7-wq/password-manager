@@ -3,11 +3,34 @@
 // Fallback constant encryption salt/key when running client-side
 const APP_ENCRYPTION_SALT = 'manager_fernet_aes_2026_secure_key';
 
-async function deriveKey(saltString: string = APP_ENCRYPTION_SALT): Promise<CryptoKey> {
+async function deriveKeyLegacy(saltString: string = APP_ENCRYPTION_SALT): Promise<CryptoKey> {
   const enc = new TextEncoder();
   const rawKey = enc.encode(saltString);
   const hash = await crypto.subtle.digest('SHA-256', rawKey);
   return crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+async function deriveKey(saltString: string = APP_ENCRYPTION_SALT): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(saltString),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: enc.encode('pwm_aes_gcm_salt_2026'),
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
 }
 
 /**
@@ -73,16 +96,20 @@ export async function decryptPassword(cipherText: string): Promise<string> {
       if (parts.length === 3) {
         const iv = Uint8Array.from(atob(parts[1]), c => c.charCodeAt(0));
         const cipherData = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
-        const key = await deriveKey();
-        const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipherData);
-        const dec = new TextDecoder();
-        return dec.decode(decrypted);
+        try {
+          const key = await deriveKey();
+          const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipherData);
+          return new TextDecoder().decode(decrypted);
+        } catch {
+          const legacyKey = await deriveKeyLegacy();
+          const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, legacyKey, cipherData);
+          return new TextDecoder().decode(decrypted);
+        }
       }
     }
     if (cipherText.startsWith('b64:')) {
       return decodeURIComponent(atob(cipherText.slice(4)));
     }
-    // If it was stored in plain text or unrecognized format
     return cipherText;
   } catch (err) {
     console.error('Decryption error:', err);
