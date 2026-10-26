@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+*.key
+secret.key
+secret_flask.key
+database_app_details.db

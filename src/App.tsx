@@ -78,11 +78,34 @@ const LOWERCASE_CHARS = 'abcdefghijklmnopqrstuvwxyz';
 const NUMBER_CHARS = '0123456789';
 const SYMBOL_CHARS = '!@#$%^&*()_+-=[]{}|;:,.<>?';
 
-async function deriveKey(saltString: string = APP_ENCRYPTION_SALT): Promise<CryptoKey> {
+async function deriveKeyLegacy(saltString: string = APP_ENCRYPTION_SALT): Promise<CryptoKey> {
   const enc = new TextEncoder();
   const rawKey = enc.encode(saltString);
   const hash = await crypto.subtle.digest('SHA-256', rawKey);
   return crypto.subtle.importKey('raw', hash, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+async function deriveKey(saltString: string = APP_ENCRYPTION_SALT): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(saltString),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: enc.encode('pwm_aes_gcm_salt_2026'),
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
 }
 
 export async function hashPassword(plainText: string): Promise<string> {
@@ -133,9 +156,15 @@ export async function decryptPassword(cipherText: string): Promise<string> {
       if (parts.length === 3) {
         const iv = Uint8Array.from(atob(parts[1]), c => c.charCodeAt(0));
         const cipherData = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
-        const key = await deriveKey();
-        const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipherData);
-        return new TextDecoder().decode(decrypted);
+        try {
+          const key = await deriveKey();
+          const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, cipherData);
+          return new TextDecoder().decode(decrypted);
+        } catch {
+          const legacyKey = await deriveKeyLegacy();
+          const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, legacyKey, cipherData);
+          return new TextDecoder().decode(decrypted);
+        }
       }
     }
     if (cipherText.startsWith('b64:')) {

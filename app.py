@@ -7,12 +7,29 @@ import sqlite3
 import time
 import urllib.request
 from datetime import datetime
+import secrets
 from cryptography.fernet import Fernet
 from flask import Flask, flash, get_flashed_messages, jsonify, redirect, request, session
+from markupsafe import escape
 from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'morad_super_secure_key_2026')
+
+# Persistent Flask secret key for session cookies
+FLASK_SECRET_FILE = 'secret_flask.key'
+if os.environ.get('SECRET_KEY'):
+    app.secret_key = os.environ.get('SECRET_KEY')
+elif os.path.exists(FLASK_SECRET_FILE):
+    with open(FLASK_SECRET_FILE, 'r', encoding='utf-8') as sf:
+        app.secret_key = sf.read().strip()
+else:
+    generated_key = secrets.token_hex(32)
+    with open(FLASK_SECRET_FILE, 'w', encoding='utf-8') as sf:
+        sf.write(generated_key)
+    app.secret_key = generated_key
+
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 SITE_NAME = 'مدير الحسابات الشامل'
 CONTACT_EMAIL = 'mradhrysy7@gmail.com'
@@ -188,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 def page(content: str, title: str = SITE_NAME, logged_in: bool = False, username: str = ''):
     msgs = get_flashed_messages(with_categories=True)
-    flash_html = ''.join(f'<div class="alert alert-{c}">{m}</div>' for c, m in msgs)
+    flash_html = ''.join(f'<div class="alert alert-{escape(c)}">{escape(m)}</div>' for c, m in msgs)
     if flash_html:
         flash_html = f'<div class="flash-wrap">{flash_html}</div>'
 
@@ -215,7 +232,7 @@ def page(content: str, title: str = SITE_NAME, logged_in: bool = False, username
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="google-site-verification" content="HFVSW9fsSoH92S5tRD8jNQiAT8rq2xluAyz7YHlY-SY" />
-<title>{title} | {SITE_NAME}</title>
+<title>{escape(title)} | {escape(SITE_NAME)}</title>
 {BASE_CSS}
 {PASSWORD_GENERATOR_JS}
 </head>
@@ -244,7 +261,7 @@ def index():
         conn = get_db()
         user = conn.execute('SELECT username FROM users WHERE id=?', (session['user_id'],)).fetchone()
         conn.close()
-        uname = user[0] if user else 'مستخدم'
+        uname = escape(user[0]) if user else 'مستخدم'
         content = f"""
         <main class="wrap">
             <h1 style="font-size:24px;color:var(--heading);margin-bottom:8px;">مرحباً، {uname} 👋</h1>
@@ -475,9 +492,9 @@ def category_view(cat_type):
     for i, r in enumerate(rows, 1):
         tr_html += f"""<tr>
             <td>{i}</td>
-            <td>{r[1] or '-'}</td>
-            <td>{r[2] or '-'}</td>
-            <td>{r[3] or '-'}</td>
+            <td>{escape(r[1]) if r[1] else '-'}</td>
+            <td>{escape(r[2]) if r[2] else '-'}</td>
+            <td>{escape(r[3]) if r[3] else '-'}</td>
             <td><span id="pw-{r[0]}">••••••••</span> <button class="btn btn-ghost btn-sm" onclick="tpwd({r[0]},this)">إظهار</button></td>
             <td>
                 <a href="/edit/{r[0]}" class="btn btn-info btn-sm">تعديل</a>
@@ -493,7 +510,7 @@ def category_view(cat_type):
     content = f"""
     <main class="wrap">
         <div class="card" style="margin-bottom:20px;">
-            <h1 class="card-title">➕ إضافة حساب في قسم {cat_type}</h1>
+            <h1 class="card-title">➕ إضافة حساب في قسم {escape(cat_type)}</h1>
             <form action="/add_item" method="POST">
                 <input type="hidden" name="account_type" value="{cat_type}">
                 <div class="fgrid">
@@ -566,30 +583,32 @@ def edit_item(item_id):
     if 'user_id' not in session:
         return redirect('/auth')
     conn = get_db()
+    acc = conn.execute('SELECT * FROM app_accounts WHERE id=? AND user_id=?', (item_id, session['user_id'])).fetchone()
+    if not acc:
+        conn.close()
+        flash('الحساب غير موجود أو ليس لديك صلاحية.', 'error')
+        return redirect('/')
+
     if request.method == 'POST':
         raw_pwd = request.form.get('password', '')
         conn.execute('UPDATE app_accounts SET app_name=?,app_username=?,email=?,password=? WHERE id=? AND user_id=?',
                      (request.form.get('app_name'), request.form.get('app_username'), request.form.get('email'),
                       encrypt_password(raw_pwd), item_id, session['user_id']))
         conn.commit()
-        row = conn.execute('SELECT account_type FROM app_accounts WHERE id=?', (item_id,)).fetchone()
         conn.close()
         flash('تم تحديث البيانات بنجاح. ✅', 'success')
-        return redirect(f'/category/{row[0]}')
+        return redirect(f'/category/{acc[3]}')
 
-    acc = conn.execute('SELECT * FROM app_accounts WHERE id=? AND user_id=?', (item_id, session['user_id'])).fetchone()
     conn.close()
-    if not acc:
-        return redirect('/')
 
     content = f"""
     <main class="wrap" style="display:flex;justify-content:center;">
         <div class="card" style="width:min(460px,100%);">
             <h1 class="card-title">✏️ تعديل الحساب</h1>
             <form method="POST">
-                <div class="fg"><label>اسم الخدمة</label><input type="text" name="app_name" value="{acc[2] or ''}" required></div>
-                <div class="fg"><label>البريد الإلكتروني</label><input type="email" name="email" value="{acc[5] or ''}"></div>
-                <div class="fg"><label>اسم المستخدم</label><input type="text" name="app_username" value="{acc[4] or ''}"></div>
+                <div class="fg"><label>اسم الخدمة</label><input type="text" name="app_name" value="{escape(acc[2]) if acc[2] else ''}" required></div>
+                <div class="fg"><label>البريد الإلكتروني</label><input type="email" name="email" value="{escape(acc[5]) if acc[5] else ''}"></div>
+                <div class="fg"><label>اسم المستخدم</label><input type="text" name="app_username" value="{escape(acc[4]) if acc[4] else ''}"></div>
                 <div class="fg">
                     <label>كلمة المرور الجديدة</label>
                     <input id="edit-pwd-input" type="text" name="password" required autocomplete="off">
@@ -616,15 +635,27 @@ def delete_item(item_id):
     conn.close()
     return redirect(f'/category/{row[0]}' if row else '/')
 
+import re
+
+EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+
 @app.route('/contact', methods=['GET', 'POST'])
 def contact():
     if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        email = request.form.get('email', '').strip()
-        subject = request.form.get('subject', '').strip()
-        message = request.form.get('message', '').strip()
+        name = request.form.get('name', '').strip()[:100]
+        email = request.form.get('email', '').strip()[:100]
+        subject = request.form.get('subject', '').strip()[:150]
+        message = request.form.get('message', '').strip()[:2000]
+
+        if not email or not EMAIL_REGEX.match(email):
+            flash('يرجى أدخال بريد إلكتروني صحيح.', 'error')
+            return redirect('/contact')
+
+        if not name or not subject or not message:
+            flash('جميع الحقول مطلوبة.', 'error')
+            return redirect('/contact')
         
-        # Send actual email to CONTACT_EMAIL via FormSubmit service
+        # Send actual email to hardcoded CONTACT_EMAIL via FormSubmit service
         try:
             payload = json.dumps({
                 'name': name,
