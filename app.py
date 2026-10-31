@@ -87,37 +87,80 @@ def session_guard():
 
 BASE_CSS = """
 <style>
-:root{--bg:#0b0f19;--card:#111827;--text:#9ca3af;--heading:#f9fafb;--ibg:#1f2937;--ibr:#374151;--itxt:#fff;--btn:#16a34a;--bth:#15803d;--brd:#1f2937;--danger:#dc2626;--info:#2563eb;--muted:#6b7280;--accent:#3b82f6;}
-.light-theme{--bg:#f8fafc;--card:#fff;--text:#374151;--heading:#111827;--ibg:#f9fafb;--ibr:#d1d5db;--itxt:#111827;--btn:#16a34a;--bth:#15803d;--brd:#e5e7eb;--danger:#dc2626;--info:#2563eb;--muted:#6b7280;--accent:#2563eb;}
+:root{--bg:#0B141C;--card:#152432;--text:#A3B5BC;--heading:#F1F5F9;--ibg:#0F1D28;--ibr:#374D5E;--itxt:#F8FAFC;--btn:#10B981;--bth:#059669;--brd:#283C4C;--danger:#EF4444;--info:#0284C7;--muted:#82949E;--accent:#38BDF8;}
+.light-theme{--bg:#F8FAFC;--card:#FFFFFF;--text:#334155;--heading:#0F172A;--ibg:#FFFFFF;--ibr:#CBD5E1;--itxt:#0F172A;--btn:#10B981;--bth:#059669;--brd:#E2E8F0;--danger:#EF4444;--info:#0284C7;--muted:#64748B;--accent:#0284C7;}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;line-height:1.6;direction:rtl;transition:background .2s,color .2s;}
+body{background:var(--bg);background-image:radial-gradient(ellipse 90% 50% at 50% -10%,rgba(30,58,82,.45),transparent 75%);background-attachment:fixed;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;min-height:100vh;line-height:1.6;direction:rtl;transition:background .2s,color .2s;}
+.light-theme body{background-image:radial-gradient(ellipse 90% 50% at 50% -10%,rgba(224,231,255,.4),transparent 75%);}
 a{color:inherit;text-decoration:none}
-.site-nav{background:var(--card);border-bottom:1px solid var(--brd);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:200;box-shadow:0 2px 8px rgba(0,0,0,.15);}
-.nav-logo{font-size:18px;font-weight:800;color:var(--heading);display:flex;align-items:center;gap:8px;cursor:pointer;}
+.site-nav{background:rgba(14,25,35,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--brd);padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.3);}
+.light-theme .site-nav{background:rgba(255,255,255,.92);box-shadow:0 2px 10px rgba(0,0,0,.05);}
+.nav-logo{font-size:18px;font-weight:800;color:var(--heading);display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;transition:transform .2s cubic-bezier(0.16,1,0.3,1);}
+.nav-logo:hover{transform:scale(1.02);}
+.nav-logo:active{transform:scale(0.97);}
 .nav-links{display:flex;gap:8px;align-items:center;}
-.nav-links a,.nav-links button{font-size:13px;color:var(--text);padding:7px 13px;border-radius:7px;border:none;background:none;cursor:pointer;white-space:nowrap;font-family:inherit;}
-.nav-links a:hover,.nav-links button:hover{background:var(--brd);color:var(--heading);}
+.nav-links a,.nav-links button{font-size:13px;color:var(--text);padding:7px 13px;border-radius:7px;border:none;background:none;cursor:pointer;white-space:nowrap;font-family:inherit;user-select:none;transition:transform .16s cubic-bezier(0.16,1,0.3,1),background .2s,color .2s;}
+.nav-links a:hover,.nav-links button:hover{background:rgba(40,60,76,.6);color:var(--heading);transform:translateY(-1px);}
+.nav-links a:active,.nav-links button:active{transform:scale(0.95);}
+.light-theme .nav-links a:hover,.light-theme .nav-links button:hover{background:#f1f5f9;color:var(--heading);transform:translateY(-1px);}
 .nav-cta{background:var(--btn)!important;color:#fff!important;font-weight:700}
 .nav-cta:hover{background:var(--bth)!important;}
 .wrap{max-width:980px;margin:0 auto;padding:28px 18px}
 .wrap-narrow{max-width:720px;margin:0 auto;padding:28px 18px}
-.card{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:26px;box-shadow:0 4px 18px rgba(0,0,0,.2);}
+.card{background:var(--card);border:1px solid var(--brd);border-radius:14px;padding:26px;box-shadow:0 8px 24px -4px rgba(6,20,27,.4);}
+.light-theme .card{box-shadow:0 4px 18px rgba(0,0,0,.06);}
 .card+.card{margin-top:20px}
 .card-title{font-size:16px;font-weight:700;color:var(--heading);border-bottom:2px solid var(--brd);padding-bottom:10px;margin-bottom:18px;}
+.card-add-account,.card-transparent{background:rgba(21,36,50,.45)!important;border:1px solid rgba(74,92,106,.45)!important;box-shadow:0 10px 30px rgba(6,20,27,.35),inset 0 1px 0 rgba(255,255,255,.05)!important;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
+.light-theme .card-add-account,.light-theme .card-transparent{background:rgba(255,255,255,.75)!important;border-color:#cbd5e1!important;box-shadow:0 8px 24px rgba(0,0,0,.05)!important;}
+.card-add-account .pwd-gen-box,.card-transparent .pwd-gen-box{background:rgba(24,43,60,.55);border:1px solid rgba(74,92,106,.45);border-radius:10px;}
+.light-theme .card-add-account .pwd-gen-box,.light-theme .card-transparent .pwd-gen-box{background:#f1f5f9;border-color:#cbd5e1;}
+.card-add-account .fg input,.card-add-account .fg textarea,.card-transparent .fg input,.card-transparent .fg textarea{background:rgba(15,29,40,.7);border:1px solid rgba(74,92,106,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:var(--itxt);}
+.light-theme .card-add-account .fg input,.light-theme .card-add-account .fg textarea,.light-theme .card-transparent .fg input,.light-theme .card-transparent .fg textarea{background:#ffffff;border-color:#cbd5e1;color:#0f172a;}
+.card-add-account .fg input:focus,.card-add-account .fg textarea:focus,.card-transparent .fg input:focus,.card-transparent .fg textarea:focus{background:rgba(18,35,49,.95);border-color:var(--accent);box-shadow:0 0 0 3px rgba(56,189,248,.2);}
+.card-saved-accounts{background:linear-gradient(180deg,#162838 0%,#101F2C 100%)!important;border:1px solid #2B4254!important;border-top:3px solid #38BDF8!important;box-shadow:0 12px 32px -4px rgba(6,20,27,.65),0 0 0 1px rgba(155,168,171,.08)!important;border-radius:14px;}
+.card-saved-accounts .count-pill{display:inline-flex;align-items:center;justify-content:center;background:#1C3346;color:#38BDF8;border:1px solid #38BDF8;font-size:13px;font-weight:800;padding:2px 10px;border-radius:12px;}
+.card-saved-accounts .privacy-note{font-size:12px;color:#A3B5BC;margin-top:6px;display:inline-flex;align-items:center;gap:6px;background:rgba(13,24,33,.75);border:1px solid rgba(56,189,248,.25);padding:6px 14px;border-radius:8px;}
+.card-saved-accounts .tbl-wrap{border-radius:10px;overflow-x:auto!important;overflow-y:hidden;-webkit-overflow-scrolling:touch;border:1px solid rgba(74,92,106,.45);background:#0B1620;margin-top:12px;}
+.card-saved-accounts table{min-width:650px;width:100%;}
+.card-saved-accounts table th{background:#182C3D;color:#F1F5F9;font-size:13px;font-weight:700;border-bottom:2px solid #2B4254;padding:13px 14px;}
+.card-saved-accounts table td{background:#12212E;color:#F1F5F9;border-bottom:1px solid rgba(74,92,106,.25);padding:13px 14px;}
+.card-saved-accounts table tbody tr:nth-child(even) td{background:#0E1A25;}
+.card-saved-accounts table tbody tr:hover td{background:#1B3144;}
+.card-saved-accounts .pw-badge{background:#08121A;border:1px solid #2B4254;color:#38BDF8;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:600;font-family:monospace;display:inline-block;max-width:100%;word-break:break-all;white-space:normal;direction:ltr!important;unicode-bidi:plaintext!important;text-align:center;user-select:all;line-height:1.45;}
+.pw-modal-overlay{position:fixed;inset:0;background:rgba(6,20,27,.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px;animation:modalFadeIn .22s cubic-bezier(0.16,1,0.3,1) forwards;}
+@keyframes modalFadeIn{from{opacity:0;}to{opacity:1;}}
+.pw-modal-content{background:#162838;border:1px solid #2B4254;border-radius:14px;padding:24px;max-width:460px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.7);text-align:center;direction:rtl;animation:modalPopUp .24s cubic-bezier(0.16,1,0.3,1) forwards;}
+@keyframes modalPopUp{from{opacity:0;transform:scale(0.92) translateY(14px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.light-theme .pw-modal-content{background:#fff;border-color:#cbd5e1;box-shadow:0 20px 40px rgba(0,0,0,.15);}
+.light-theme .card-saved-accounts{background:#fff!important;border:1px solid #e2e8f0!important;border-top:3px solid #0284c7!important;}
+.light-theme .card-saved-accounts .count-pill{background:#f1f5f9;color:#0284c7;border-color:#cbd5e1;}
+.light-theme .card-saved-accounts .tbl-wrap{background:#f8fafc;border-color:#e2e8f0;}
+.light-theme .card-saved-accounts table th{background:#f1f5f9;color:#334155;border-bottom-color:#cbd5e1;}
+.light-theme .card-saved-accounts table td{background:#ffffff;color:#0f172a;border-bottom-color:#f1f5f9;}
+.light-theme .card-saved-accounts table tbody tr:nth-child(even) td{background:#f8fafc;}
+.light-theme .card-saved-accounts table tbody tr:hover td{background:#f1f5f9;}
+.light-theme .card-saved-accounts .pw-badge{background:#f1f5f9;border-color:#cbd5e1;color:#0284c7;}
 .fg{margin-bottom:14px}
 .fg label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px}
-.fg input,.fg textarea{width:100%;padding:11px 14px;border:1px solid var(--ibr);border-radius:8px;font-size:14px;background:var(--ibg);color:var(--itxt);outline:none;}
+.fg input,.fg textarea{width:100%;padding:11px 14px;border:1px solid var(--ibr);border-radius:8px;font-size:14px;background:var(--ibg);color:var(--itxt);outline:none;transition:border-color .2s,box-shadow .2s;}
+.fg input:focus,.fg textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(56,189,248,.2);}
+.fg input::placeholder,.fg textarea::placeholder{color:var(--muted);opacity:.85}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none}
-.btn-primary{background:var(--btn);color:#fff}.btn-primary:hover{background:var(--bth)}
-.btn-info{background:var(--info);color:#fff}
-.btn-danger{background:var(--danger);color:#fff}
-.btn-ghost{background:var(--brd);color:var(--heading)}
-.btn-sm{padding:5px 10px;font-size:12px;border-radius:6px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;text-decoration:none;user-select:none;-webkit-user-select:none;position:relative;will-change:transform,box-shadow;transition:transform .18s cubic-bezier(0.16,1,0.3,1),box-shadow .22s cubic-bezier(0.16,1,0.3,1),background .2s;}
+.btn:hover{transform:translateY(-2px);}
+.btn:active{transform:translateY(1px) scale(0.96)!important;transition-duration:0.08s!important;}
+.btn-primary{background:var(--btn);color:#fff;box-shadow:0 2px 10px rgba(16,185,129,.25);}.btn-primary:hover{background:var(--bth);box-shadow:0 6px 18px rgba(16,185,129,.4);}.btn-primary:active{box-shadow:0 2px 6px rgba(16,185,129,.3)!important;}
+.btn-info{background:var(--info);color:#fff;box-shadow:0 2px 10px rgba(2,132,199,.25);}.btn-info:hover{background:#0369a1;box-shadow:0 6px 18px rgba(2,132,199,.4);}.btn-info:active{box-shadow:0 2px 6px rgba(2,132,199,.3)!important;}
+.btn-danger{background:var(--danger);color:#fff;box-shadow:0 2px 8px rgba(239,68,68,.25);}.btn-danger:hover{background:#dc2626;box-shadow:0 6px 16px rgba(239,68,68,.4);}.btn-danger:active{box-shadow:0 2px 6px rgba(239,68,68,.3)!important;}
+.btn-ghost{background:#1C2D3B;color:var(--heading);border:1px solid var(--brd);}.btn-ghost:hover{background:#243B4E;color:#fff;border-color:var(--accent);box-shadow:0 4px 14px rgba(0,0,0,.3);}.btn-ghost:active{box-shadow:0 1px 4px rgba(0,0,0,.2)!important;}
+.light-theme .btn-ghost{background:#f1f5f9;border-color:#cbd5e1;color:#1e293b;}
+.light-theme .btn-ghost:hover{background:#e2e8f0;border-color:#94a3b8;color:#0f172a;}
+.btn-sm{padding:6px 12px;font-size:12px;border-radius:6px}
 .btn-block{width:100%;text-align:center;display:block}
 .flash-wrap{max-width:980px;margin:10px auto 0;padding:0 18px}
 .alert{padding:12px 16px;border-radius:8px;font-size:14px;margin-bottom:8px;}
-.alert-success{background:#14532d;color:#bbf7d0}
+.alert-success{background:#064e3b;color:#a7f3d0}
 .alert-error{background:#450a0a;color:#fecaca}
 .tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
@@ -132,8 +175,9 @@ td{padding:12px 14px;text-align:center;font-size:13px;border-bottom:1px solid va
 .welcome-panel h2{font-size:clamp(19px,3vw,24px);color:var(--heading);margin:6px 0 10px;font-weight:800}
 .welcome-panel p{font-size:14px;line-height:1.8;color:var(--text)}
 .feat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin:20px 0}
-.feat-card{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:22px 16px;text-align:center;cursor:pointer;text-decoration:none;border:1px solid var(--brd);transition:border-color .2s;}
-.feat-card:hover{border-color:var(--accent)}
+.feat-card{background:var(--card);border:1px solid var(--brd);border-radius:12px;padding:22px 16px;text-align:center;cursor:pointer;text-decoration:none;user-select:none;-webkit-user-select:none;transition:transform .22s cubic-bezier(0.16,1,0.3,1),box-shadow .22s cubic-bezier(0.16,1,0.3,1),border-color .2s;}
+.feat-card:hover{transform:translateY(-4px);border-color:var(--accent);box-shadow:0 12px 28px rgba(6,20,27,.55);}
+.feat-card:active{transform:translateY(-1px) scale(0.98);box-shadow:0 4px 12px rgba(6,20,27,.4);}
 .feat-icon{font-size:30px;margin-bottom:8px}
 .feat-card h3{font-size:14px;color:var(--heading);margin-bottom:6px;font-weight:700}
 .feat-card p{font-size:12px;line-height:1.6;color:var(--text)}
@@ -475,10 +519,19 @@ def category_view(cat_type):
     for i, r in enumerate(rows, 1):
         tr_html += f"""<tr>
             <td>{i}</td>
-            <td>{r[1] or '-'}</td>
+            <td><strong>{r[1] or '-'}</strong></td>
             <td>{r[2] or '-'}</td>
             <td>{r[3] or '-'}</td>
-            <td><span id="pw-{r[0]}">••••••••</span> <button class="btn btn-ghost btn-sm" onclick="tpwd({r[0]},this)">إظهار</button></td>
+            <td style="min-width:210px;max-width:320px;">
+                <div style="display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;">
+                    <span id="pw-{r[0]}" class="pw-badge" dir="ltr" style="font-family:monospace;letter-spacing:1px;font-weight:600;word-break:break-all;white-space:normal;user-select:all;text-align:center;">••••••••</span>
+                    <div style="display:inline-flex;gap:4px;flex-wrap:wrap;justify-content:center;">
+                        <button id="pw-btn-{r[0]}" class="btn btn-ghost btn-sm" onclick="tpwd({r[0]},this)">إظهار</button>
+                        <button class="btn btn-ghost btn-sm" onclick="cpwd({r[0]},this)">نسخ</button>
+                        <button class="btn btn-ghost btn-sm" onclick="openPwModal({r[0]},'{r[1] or r[2] or 'الحساب'}')" title="عرض كلمة المرور كاملة ومكبرة">🔍 عرض كامل</button>
+                    </div>
+                </div>
+            </td>
             <td>
                 <a href="/edit/{r[0]}" class="btn btn-info btn-sm">تعديل</a>
                 <form action="/delete/{r[0]}" method="POST" style="display:inline;" onsubmit="return confirm('تأكيد الحذف؟');">
@@ -490,9 +543,18 @@ def category_view(cat_type):
     if not tr_html:
         tr_html = '<tr><td colspan="6" style="padding:24px;color:var(--muted);">لا توجد حسابات مسجلة بعد.</td></tr>'
 
+    toggle_all_btn = ""
+    if rows:
+        toggle_all_btn = f"""
+        <button id="toggleAllBtn" type="button" class="btn btn-primary btn-sm" onclick="toggleAllPrivacy('{cat_type}')" style="display:inline-flex;align-items:center;gap:6px;font-weight:700;padding:6px 14px;">
+            <span id="toggleAllIcon">👁️</span>
+            <span id="toggleAllText">إظهار الكل</span>
+        </button>
+        """
+
     content = f"""
     <main class="wrap">
-        <div class="card" style="margin-bottom:20px;">
+        <div class="card card-add-account" style="margin-bottom:20px;">
             <h1 class="card-title">➕ إضافة حساب في قسم {cat_type}</h1>
             <form action="/add_item" method="POST">
                 <input type="hidden" name="account_type" value="{cat_type}">
@@ -515,8 +577,19 @@ def category_view(cat_type):
                 <button type="submit" class="btn btn-primary btn-block">حفظ الحساب</button>
             </form>
         </div>
-        <div class="card">
-            <h2 class="card-title">📋 الحسابات المحفوظة ({len(rows)})</h2>
+        <div class="card card-saved-accounts">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+                <div>
+                    <h2 class="card-title" style="margin:0;display:flex;align-items:center;gap:8px;">
+                        <span>📋 الحسابات المحفوظة</span>
+                        <span class="count-pill">{len(rows)}</span>
+                    </h2>
+                    <div class="privacy-note">
+                        🛡️ وضع الخصوصية: يتم إخفاء الحسابات تلقائياً عند التبديل بين الأقسام لحمايتك في الأماكن العامة
+                    </div>
+                </div>
+                {toggle_all_btn}
+            </div>
             <div class="tbl-wrap">
                 <table>
                     <thead><tr><th>#</th><th>الاسم</th><th>البريد</th><th>اسم المستخدم</th><th>كلمة المرور</th><th>الإجراءات</th></tr></thead>
@@ -524,13 +597,149 @@ def category_view(cat_type):
                 </table>
             </div>
         </div>
+        <div id="pwModal" class="pw-modal-overlay" style="display:none;" onclick="closePwModal()">
+            <div class="pw-modal-content" onclick="event.stopPropagation()">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid var(--brd);padding-bottom:10px;">
+                    <h3 id="pwModalTitle" style="margin:0;font-size:16px;font-weight:700;color:var(--heading);">🔐 كلمة المرور كاملة</h3>
+                    <button type="button" onclick="closePwModal()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;padding:0 4px;">✕</button>
+                </div>
+                <div style="margin:20px 0;">
+                    <div id="pwModalText" dir="ltr" style="background:var(--ibg);border:2px solid var(--info);border-radius:10px;padding:16px;font-family:monospace;font-size:17px;font-weight:700;color:var(--heading);word-break:break-all;white-space:normal;user-select:all;line-height:1.6;text-align:center;box-shadow:inset 0 2px 6px rgba(0,0,0,0.3);"></div>
+                    <div id="pwModalCount" style="fontSize:12px;color:var(--muted);margin-top:10px;"></div>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:center;">
+                    <button id="modalCopyBtn" type="button" class="btn btn-primary" onclick="copyModalPw(this)">📋 نسخ كلمة المرور بالكامل</button>
+                    <button type="button" class="btn btn-ghost" onclick="closePwModal()">إغلاق</button>
+                </div>
+            </div>
+        </div>
     </main>
     <script>
-    function tpwd(id,btn){{
-        var sp=document.getElementById('pw-'+id);
-        if(sp.textContent.includes('•')){{
-            fetch('/get_password/'+id).then(r=>r.json()).then(d=>{{sp.textContent=d.password;btn.textContent='إخفاء';}});
-        }}else{{sp.textContent='••••••••';btn.textContent='إظهار';}}
+    var allRevealed = false;
+    var cachedPasswords = {{}};
+
+    function toggleAllPrivacy(catType) {{
+        var btnText = document.getElementById('toggleAllText');
+        var btnIcon = document.getElementById('toggleAllIcon');
+        var btn = document.getElementById('toggleAllBtn');
+
+        if (!allRevealed) {{
+            if (btnText) btnText.textContent = 'جاري الإظهار...';
+            fetch('/get_all_passwords/' + encodeURIComponent(catType))
+                .then(function(r) {{ return r.json(); }})
+                .then(function(data) {{
+                    cachedPasswords = data;
+                    for (var id in data) {{
+                        var sp = document.getElementById('pw-' + id);
+                        var b = document.getElementById('pw-btn-' + id);
+                        if (sp) sp.textContent = data[id];
+                        if (b) b.textContent = 'إخفاء';
+                    }}
+                    allRevealed = true;
+                    if (btnText) btnText.textContent = 'إخفاء الكل';
+                    if (btnIcon) btnIcon.textContent = '🔒';
+                    if (btn) btn.className = 'btn btn-ghost btn-sm';
+                }})
+                .catch(function() {{
+                    if (btnText) btnText.textContent = 'إظهار الكل';
+                    if (btnIcon) btnIcon.textContent = '👁️';
+                }});
+        }} else {{
+            var spans = document.querySelectorAll('[id^="pw-"]');
+            spans.forEach(function(sp) {{
+                sp.textContent = '••••••••';
+            }});
+            var btns = document.querySelectorAll('[id^="pw-btn-"]');
+            btns.forEach(function(b) {{
+                b.textContent = 'إخفاء' === b.textContent ? 'إظهار' : b.textContent;
+            }});
+            allRevealed = false;
+            if (btnText) btnText.textContent = 'إظهار الكل';
+            if (btnIcon) btnIcon.textContent = '👁️';
+            if (btn) btn.className = 'btn btn-primary btn-sm';
+        }}
+    }}
+
+    function tpwd(id, btn) {{
+        var sp = document.getElementById('pw-' + id);
+        if (sp.textContent.includes('•')) {{
+            if (cachedPasswords[id]) {{
+                sp.textContent = cachedPasswords[id];
+                btn.textContent = 'إخفاء';
+            }} else {{
+                fetch('/get_password/' + id)
+                    .then(function(r) {{ return r.json(); }})
+                    .then(function(d) {{
+                        cachedPasswords[id] = d.password;
+                        sp.textContent = d.password;
+                        btn.textContent = 'إخفاء';
+                    }});
+            }}
+        }} else {{
+            sp.textContent = '••••••••';
+            btn.textContent = 'إظهار';
+        }}
+    }}
+
+    function cpwd(id, btn) {{
+        function copyText(txt) {{
+            if (navigator.clipboard && navigator.clipboard.writeText) {{
+                navigator.clipboard.writeText(txt).then(function() {{
+                    var old = btn.textContent;
+                    btn.textContent = 'تم ✓';
+                    setTimeout(function(){{ btn.textContent = old; }}, 1500);
+                }});
+            }}
+        }}
+
+        if (cachedPasswords[id]) {{
+            copyText(cachedPasswords[id]);
+        }} else {{
+            fetch('/get_password/' + id)
+                .then(function(r) {{ return r.json(); }})
+                .then(function(d) {{
+                    cachedPasswords[id] = d.password;
+                    copyText(d.password);
+                }});
+        }}
+    }}
+
+    function openPwModal(id, title) {{
+        function show(pw) {{
+            var m = document.getElementById('pwModal');
+            document.getElementById('pwModalTitle').textContent = '🔐 كلمة المرور كاملة (' + title + ')';
+            document.getElementById('pwModalText').textContent = pw;
+            document.getElementById('pwModalCount').textContent = 'عدد الأحرف: ' + pw.length + ' حرف | نص كامل بدون أي اقتطاع';
+            m.style.display = 'flex';
+        }}
+        if (cachedPasswords[id]) {{
+            show(cachedPasswords[id]);
+        }} else {{
+            fetch('/get_password/' + id)
+                .then(function(r) {{ return r.json(); }})
+                .then(function(d) {{
+                    cachedPasswords[id] = d.password;
+                    var sp = document.getElementById('pw-' + id);
+                    if (sp && !sp.textContent.includes('•')) sp.textContent = d.password;
+                    show(d.password);
+                }});
+        }}
+    }}
+
+    function closePwModal() {{
+        var m = document.getElementById('pwModal');
+        if (m) m.style.display = 'none';
+    }}
+
+    function copyModalPw(btn) {{
+        var txt = document.getElementById('pwModalText').textContent;
+        if (navigator.clipboard && navigator.clipboard.writeText) {{
+            navigator.clipboard.writeText(txt).then(function() {{
+                var old = btn.textContent;
+                btn.textContent = 'تم نسخ كلمة المرور كاملة! ✓';
+                setTimeout(function(){{ btn.textContent = old; }}, 2500);
+            }});
+        }}
     }}
     </script>"""
     return page(content, title=cat_type, logged_in=True)
@@ -560,6 +769,16 @@ def get_password(item_id):
     if row:
         return jsonify({'password': decrypt_password(row[0])})
     return jsonify({'password': 'Not Found'}), 404
+
+@app.route('/get_all_passwords/<cat_type>')
+def get_all_passwords(cat_type):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 403
+    conn = get_db()
+    rows = conn.execute('SELECT id, password FROM app_accounts WHERE user_id=? AND account_type=?',
+                        (session['user_id'], cat_type)).fetchall()
+    conn.close()
+    return jsonify({str(r[0]): decrypt_password(r[1]) for r in rows})
 
 @app.route('/edit/<int:item_id>', methods=['GET', 'POST'])
 def edit_item(item_id):

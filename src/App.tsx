@@ -22,6 +22,26 @@ export interface AppAccount {
   email?: string;
   encryptedPassword: string;
   createdAt: string;
+  passwordUpdatedAt?: string;
+  remind6Months?: boolean;
+}
+
+export function checkPasswordAge(dateString?: string): {
+  isOlderThan6Months: boolean;
+  ageDays: number;
+  ageMonths: number;
+  formattedDate: string;
+} {
+  const date = new Date(dateString || Date.now());
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  const ageDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  const ageMonths = Math.max(0, Math.floor(ageDays / 30));
+  const isOlderThan6Months = ageDays >= 180;
+  const formattedDate = isNaN(date.getTime())
+    ? 'غير محدد'
+    : date.toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' });
+  return { isOlderThan6Months, ageDays, ageMonths, formattedDate };
 }
 
 export interface BlogPost {
@@ -1260,9 +1280,11 @@ export const App: React.FC = () => {
     appUsername?: string;
     email?: string;
     password: string;
+    remind6Months?: boolean;
   }) => {
     if (!currentUser) return;
     const encPass = await encryptPassword(data.password);
+    const nowIso = new Date().toISOString();
     const newAcc: AppAccount = {
       id: 'acc_' + Date.now().toString(36),
       userId: currentUser.id,
@@ -1271,7 +1293,9 @@ export const App: React.FC = () => {
       appUsername: data.appUsername,
       email: data.email,
       encryptedPassword: encPass,
-      createdAt: new Date().toISOString(),
+      createdAt: nowIso,
+      passwordUpdatedAt: nowIso,
+      remind6Months: data.remind6Months ?? false,
     };
     const nextAccounts = [...accounts, newAcc];
     saveAccounts(nextAccounts);
@@ -1281,13 +1305,29 @@ export const App: React.FC = () => {
 
   const handleUpdateAccount = async (
     id: string,
-    data: { appName?: string; appUsername?: string; email?: string; password?: string }
+    data: {
+      appName?: string;
+      appUsername?: string;
+      email?: string;
+      password?: string;
+      remind6Months?: boolean;
+      passwordUpdatedAt?: string;
+    }
   ) => {
     if (!currentUser) return;
     const target = accounts.find(a => a.id === id && a.userId === currentUser.id);
     if (!target) return;
     let encPass = target.encryptedPassword;
-    if (data.password) encPass = await encryptPassword(data.password);
+    let passwordUpdatedAt = data.passwordUpdatedAt !== undefined
+      ? data.passwordUpdatedAt
+      : (target.passwordUpdatedAt || target.createdAt || new Date().toISOString());
+
+    if (data.password && data.password !== '') {
+      encPass = await encryptPassword(data.password);
+      if (data.passwordUpdatedAt === undefined) {
+        passwordUpdatedAt = new Date().toISOString();
+      }
+    }
 
     const updated: AppAccount = {
       ...target,
@@ -1295,6 +1335,8 @@ export const App: React.FC = () => {
       appUsername: data.appUsername !== undefined ? data.appUsername : target.appUsername,
       email: data.email !== undefined ? data.email : target.email,
       encryptedPassword: encPass,
+      remind6Months: data.remind6Months !== undefined ? data.remind6Months : target.remind6Months,
+      passwordUpdatedAt,
     };
     const nextAccounts = accounts.map(a => (a.id === id ? updated : a));
     saveAccounts(nextAccounts);
@@ -1383,8 +1425,9 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* VIEWS */}
-        {viewState.view === 'home' && (
+        {/* VIEWS WITH SMOOTH TRANSITION */}
+        <div key={viewState.view + ('category' in viewState ? viewState.category : '')} className="page-view-enter">
+          {viewState.view === 'home' && (
           currentUser ? (
             <main className="wrap">
               <header style={{ marginBottom: '24px' }}>
@@ -1589,6 +1632,7 @@ export const App: React.FC = () => {
             </article>
           </main>
         )}
+        </div>
       </div>
 
       {/* Footer */}
@@ -1676,20 +1720,51 @@ function CategoryViewContainer({
   const [appUsername, setAppUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [remind6Months, setRemind6Months] = useState(false);
   const [revealedPasswords, setRevealedPasswords] = useState<Record<string, string>>({});
+  const [isAllRevealed, setIsAllRevealed] = useState<boolean>(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [pwModal, setPwModal] = useState<{ title: string; password: string } | null>(null);
+  const [modalCopied, setModalCopied] = useState<boolean>(false);
 
   const filtered = accounts.filter(a => a.accountType === category);
   const strength = calculatePasswordStrength(password);
+
+  // إخفاء الحسابات تلقائياً عند التبديل بين الأقسام لتوفير طبقة إضافية من الخصوصية في الأماكن العامة
+  useEffect(() => {
+    setRevealedPasswords({});
+    setIsAllRevealed(false);
+  }, [category]);
 
   const togglePassword = async (id: string, enc: string) => {
     if (revealedPasswords[id]) {
       const next = { ...revealedPasswords };
       delete next[id];
       setRevealedPasswords(next);
+      if (Object.keys(next).length === 0) {
+        setIsAllRevealed(false);
+      }
     } else {
       const p = await decryptPassword(enc);
-      setRevealedPasswords(prev => ({ ...prev, [id]: p }));
+      const next = { ...revealedPasswords, [id]: p };
+      setRevealedPasswords(next);
+      if (filtered.length > 0 && Object.keys(next).length >= filtered.length) {
+        setIsAllRevealed(true);
+      }
+    }
+  };
+
+  const handleToggleAll = async () => {
+    if (isAllRevealed) {
+      setRevealedPasswords({});
+      setIsAllRevealed(false);
+    } else {
+      const next: Record<string, string> = {};
+      for (const acc of filtered) {
+        next[acc.id] = await decryptPassword(acc.encryptedPassword);
+      }
+      setRevealedPasswords(next);
+      setIsAllRevealed(true);
     }
   };
 
@@ -1706,12 +1781,12 @@ function CategoryViewContainer({
         <button type="button" onClick={() => onNavigate({ view: 'home' })}>الرئيسية</button> › <span>{catName}</span>
       </nav>
 
-      <div className="card" style={{ marginBottom: '20px' }}>
+      <div className="card card-add-account" style={{ marginBottom: '20px' }}>
         <h1 className="card-title">➕ إضافة حساب جديد في {catName}</h1>
         <form onSubmit={async e => {
           e.preventDefault();
-          await onAddAccount({ accountType: category, appName, appUsername, email, password });
-          setAppName(''); setAppUsername(''); setEmail(''); setPassword('');
+          await onAddAccount({ accountType: category, appName, appUsername, email, password, remind6Months });
+          setAppName(''); setAppUsername(''); setEmail(''); setPassword(''); setRemind6Months(false);
         }}>
           <div className="fgrid">
             {category !== 'بريد' && (
@@ -1740,12 +1815,49 @@ function CategoryViewContainer({
           </div>
 
           <PasswordGeneratorUtility onApplyPassword={pwd => setPassword(pwd)} />
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'var(--text)', margin: '14px 0 16px', userSelect: 'none' }}>
+            <input
+              type="checkbox"
+              checked={remind6Months}
+              onChange={e => setRemind6Months(e.target.checked)}
+              style={{ accentColor: 'var(--btn)', width: '17px', height: '17px', cursor: 'pointer' }}
+            />
+            <span>🔔 تفعيل تنبيه لتغيير كلمة المرور إذا مر عليها أكثر من 6 أشهر (ميزة اختيارية)</span>
+          </label>
+
           <button type="submit" className="btn btn-primary btn-block">حفظ الحساب</button>
         </form>
       </div>
 
-      <div className="card">
-        <h2 className="card-title">📋 الحسابات المحفوظة ({filtered.length})</h2>
+      <div className="card card-saved-accounts">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+          <div>
+            <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>📋 الحسابات المحفوظة</span>
+              <span className="count-pill">{filtered.length}</span>
+            </h2>
+            <div className="privacy-note">
+              🛡️ وضع الخصوصية: يتم إخفاء كلمات المرور تلقائياً عند التبديل بين الأقسام لحمايتك في الأماكن العامة
+            </div>
+          </div>
+
+          {filtered.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                className={`btn ${isAllRevealed ? 'btn-ghost' : 'btn-primary'} btn-sm`}
+                onClick={handleToggleAll}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, padding: '7px 14px' }}
+                title={isAllRevealed ? 'إخفاء كافة الحسابات لحماية الخصوصية في الأماكن العامة' : 'إظهار كافة كلمات المرور في هذا القسم'}
+              >
+                <span>{isAllRevealed ? '🔒' : '👁️'}</span>
+                <span>{isAllRevealed ? 'إخفاء الكل' : 'إظهار الكل'}</span>
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="tbl-wrap">
           <table>
             <thead>
@@ -1761,20 +1873,122 @@ function CategoryViewContainer({
               {filtered.length === 0 ? (
                 <tr><td colSpan={5} style={{ padding: '24px', color: 'var(--muted)' }}>لا توجد حسابات بعد.</td></tr>
               ) : (
-                filtered.map((acc, i) => (
+                filtered.map((acc, i) => {
+                  const ageInfo = checkPasswordAge(acc.passwordUpdatedAt || acc.createdAt);
+                  return (
                   <tr key={acc.id}>
                     <td>{i + 1}</td>
-                    {category !== 'بريد' && <td>{acc.appName}</td>}
-                    <td>{acc.email || '-'}</td>
+                    {category !== 'بريد' && (
+                      <td>
+                        <strong>{acc.appName}</strong>
+                        {acc.appUsername && (
+                          <div style={{ fontSize: '11px', color: 'var(--muted)', marginTop: '2px' }}>
+                            @{acc.appUsername}
+                          </div>
+                        )}
+                        {acc.remind6Months && ageInfo.isOlderThan6Months && (
+                          <div style={{ marginTop: '4px' }}>
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                color: '#f59e0b',
+                                background: 'rgba(245, 158, 11, 0.12)',
+                                border: '1px solid rgba(245, 158, 11, 0.35)',
+                                padding: '2px 7px',
+                                borderRadius: '4px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '3px',
+                                fontWeight: 700,
+                              }}
+                              title="تنبيه: مرّت أكثر من 6 أشهر على تعيين كلمة المرور هذه. اضغط تعديل لتحديثها."
+                            >
+                              ⚠️ كلمة المرور قديمة (+6 أشهر)
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                    )}
                     <td>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
-                        <span>{revealedPasswords[acc.id] || '••••••••'}</span>
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => togglePassword(acc.id, acc.encryptedPassword)}>
-                          {revealedPasswords[acc.id] ? 'إخفاء' : 'إظهار'}
-                        </button>
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => copyPassword(acc.id, acc.encryptedPassword)}>
-                          {copiedId === acc.id ? 'تم النسخ ✓' : 'نسخ'}
-                        </button>
+                      <div>{acc.email || '-'}</div>
+                      {category === 'بريد' && acc.remind6Months && ageInfo.isOlderThan6Months && (
+                        <div style={{ marginTop: '4px' }}>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              color: '#f59e0b',
+                              background: 'rgba(245, 158, 11, 0.12)',
+                              border: '1px solid rgba(245, 158, 11, 0.35)',
+                              padding: '2px 7px',
+                              borderRadius: '4px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px',
+                              fontWeight: 700,
+                            }}
+                            title="تنبيه: مرّت أكثر من 6 أشهر على تعيين كلمة المرور هذه. اضغط تعديل لتحديثها."
+                          >
+                            ⚠️ كلمة المرور قديمة (+6 أشهر)
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="pw-cell" style={{ minWidth: '220px', maxWidth: '340px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', justifyContent: 'center' }}>
+                        <span
+                          className="pw-badge"
+                          dir="ltr"
+                          title="نص كلمة المرور كاملة"
+                          style={{
+                            fontFamily: revealedPasswords[acc.id] ? "'SFMono-Regular', Consolas, Menlo, monospace" : 'inherit',
+                            letterSpacing: revealedPasswords[acc.id] ? '0.5px' : '2px',
+                            fontWeight: 600,
+                            wordBreak: 'break-all',
+                            whiteSpace: 'normal',
+                            userSelect: 'all',
+                            maxWidth: '100%',
+                            textAlign: 'center',
+                          }}
+                        >
+                          {revealedPasswords[acc.id] || '••••••••'}
+                        </span>
+                        <div style={{ display: 'inline-flex', gap: '4px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => togglePassword(acc.id, acc.encryptedPassword)}
+                            title={revealedPasswords[acc.id] ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+                          >
+                            {revealedPasswords[acc.id] ? 'إخفاء' : 'إظهار'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => copyPassword(acc.id, acc.encryptedPassword)}
+                            title="نسخ كلمة المرور"
+                          >
+                            {copiedId === acc.id ? 'تم النسخ ✓' : 'نسخ'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={async () => {
+                              let p = revealedPasswords[acc.id];
+                              if (!p) {
+                                p = await decryptPassword(acc.encryptedPassword);
+                                setRevealedPasswords(prev => ({ ...prev, [acc.id]: p }));
+                              }
+                              setModalCopied(false);
+                              setPwModal({
+                                title: acc.appName || acc.email || 'الحساب',
+                                password: p,
+                              });
+                            }}
+                            title="عرض كلمة المرور كاملة ومكبرة"
+                          >
+                            🔍 عرض كامل
+                          </button>
+                        </div>
                       </div>
                     </td>
                     <td className="td-act">
@@ -1792,6 +2006,74 @@ function CategoryViewContainer({
           </table>
         </div>
       </div>
+
+      {pwModal && (
+        <div className="pw-modal-overlay" onClick={() => setPwModal(null)}>
+          <div className="pw-modal-content" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--brd)', paddingBottom: '10px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: 'var(--heading)' }}>
+                🔐 كلمة المرور كاملة ({pwModal.title})
+              </h3>
+              <button
+                type="button"
+                onClick={() => setPwModal(null)}
+                style={{ background: 'none', border: 'none', fontSize: '20px', color: 'var(--muted)', cursor: 'pointer', padding: '0 4px' }}
+                title="إغلاق"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ margin: '20px 0' }}>
+              <div
+                dir="ltr"
+                style={{
+                  background: 'var(--ibg)',
+                  border: '2px solid var(--info)',
+                  borderRadius: '10px',
+                  padding: '16px',
+                  fontFamily: "'SFMono-Regular', Consolas, Menlo, monospace",
+                  fontSize: '17px',
+                  fontWeight: 700,
+                  color: 'var(--heading)',
+                  wordBreak: 'break-all',
+                  whiteSpace: 'normal',
+                  userSelect: 'all',
+                  lineHeight: 1.6,
+                  textAlign: 'center',
+                  boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.3)',
+                }}
+              >
+                {pwModal.password}
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--muted)', marginTop: '10px' }}>
+                عدد الأحرف: {pwModal.password.length} حرف | نص كامل بدون أي اقتطاع
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={async () => {
+                  await navigator.clipboard.writeText(pwModal.password);
+                  setModalCopied(true);
+                  setTimeout(() => setModalCopied(false), 2500);
+                }}
+              >
+                {modalCopied ? 'تم نسخ كلمة المرور كاملة! ✓' : '📋 نسخ كلمة المرور بالكامل'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setPwModal(null)}
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
